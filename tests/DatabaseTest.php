@@ -90,6 +90,31 @@ class DatabaseTest extends PHPUnit_Framework_TestCase {
 		$this->assertEquals(50, count($zeroes));
 	}
 	
+	function testEvents() {
+		$a = array();
+		
+		$f = function($event) use (&$a) {
+			return function($id, $data = null) use ($event, &$a) {
+				if($id === 'events')
+					$a[] = $event;
+			};
+		};
+		
+		self::$db->on('beforeSave', $f('beforeSave'));
+		self::$db->on('saved', $f('saved'));
+		self::$db->on('beforeLoad', $f('beforeLoad'));
+		self::$db->on('loaded', $f('loaded'));
+		self::$db->on('beforeDelete', $f('beforeDelete'));
+		self::$db->on('deleted', $f('deleted'));
+		
+		self::$db->save('events', array('foo' => 'bar'));
+		self::$db->load('events');
+		self::$db->delete('events');
+		
+		$ex = array('beforeSave', 'saved', 'beforeLoad', 'loaded', 'beforeDelete', 'deleted');
+		$this->assertEquals($ex, $a);
+	}
+	
 	function offtestNextFile() {
 		touch('tests/data/foo1');
 		touch('tests/data/foo2');

@@ -4,7 +4,7 @@ namespace MicroDB;
 
 /**
  * Represents and manages an index on a database.
- * An index maps keys to ids where keys are computed from an item.
+ * An index maps keys to ids where keys are computed from the item.
  */
 class Index {
 
@@ -30,14 +30,14 @@ class Index {
 	}
 	
 	/**
-	 * Find 
+	 * Find and load items that match a key/callback
 	 */
 	function find($key) {
 		return $this->db->load($this->findIds($key));
 	}
 	
 	/**
-	 * Find IDs that match a given key, or a given callback
+	 * Find IDs that match a key/callback
 	 */
 	function findIds($key) {
 		$this->load();

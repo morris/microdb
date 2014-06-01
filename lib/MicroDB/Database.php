@@ -17,38 +17,6 @@ class Database {
 		$this->path = $path;
 		$this->idFunc = $idFunc;
 	}
-	
-	/**
-	 * Find data using either key-value map or callback
-	 */
-	public function find($where = array()) {
-		$ids = $this->scandir($this->path);
-		
-		$results = array();
-		
-		if(is_callable($where)) {
-			foreach($ids as $id) {
-				$data = $this->load($id);
-				if($where($data))
-					$results[$id] = $data;
-			}
-		} else {
-			foreach($ids as $id) {
-				$match = true;
-				$data = $this->load($id);
-				foreach($where as $key => $value) {
-					if(@$data[$key] !== $value) {
-						$match = false;
-						break;
-					}
-				}
-				if($match)
-					$results[$id] = $data;
-			}
-		}
-		
-		return $results;
-	}
 
 	/**
 	 * Save data to database
@@ -78,8 +46,10 @@ class Database {
 		
 		$this->trigger('beforeLoad', $id);
 		
-		if($this->caching && isset($this->cache[$id]))
+		if($this->caching && isset($this->cache[$id])) {
+			$this->trigger('loaded', $id, $this->cache[$id]);
 			return $this->cache[$id];
+		}
 		
 		$data = json_decode($this->get($this->path . $id), true);
 		
@@ -114,11 +84,43 @@ class Database {
 		
 		return $return;
 	}
+	
+	/**
+	 * Find data using either key-value map or callback
+	 */
+	public function find($where = array()) {
+		$ids = $this->scandir($this->path);
+		
+		$results = array();
+		
+		if(is_callable($where)) {
+			foreach($ids as $id) {
+				$data = $this->load($id);
+				if($where($data))
+					$results[$id] = $data;
+			}
+		} else {
+			foreach($ids as $id) {
+				$match = true;
+				$data = $this->load($id);
+				foreach($where as $key => $value) {
+					if(@$data[$key] !== $value) {
+						$match = false;
+						break;
+					}
+				}
+				if($match)
+					$results[$id] = $data;
+			}
+		}
+		
+		return $results;
+	}
 
 	/**
 	 * Put file contents
 	 */
-	protected function put($file, $data, $mode = false) {
+	function put($file, $data, $mode = false) {
 		// don't overwrite if unchanged, just touch
 		if(file_exists($file) && file_get_contents($file) === $data) {
 			touch($file);
@@ -139,16 +141,16 @@ class Database {
 	/**
 	 * Get file contents
 	 */
-	protected function get($id) {
-		if(!$this->check($id))
+	function get($file) {
+		if(!$this->check($file))
 			return null;
-		return file_get_contents($id);
+		return file_get_contents($file);
 	}
 	
 	/**
 	 * Set file permissions
 	 */
-	protected function chmod($file, $mode = false) {
+	function chmod($file, $mode = false) {
 		if(!$mode)
 			$mode = 0644;
 		return @chmod($file, $mode);
@@ -157,7 +159,7 @@ class Database {
 	/**
 	 * Check if file exists
 	 */
-	protected function check($path) {
+	function check($path) {
 		return file_exists($path);
 	}
 	
@@ -251,6 +253,7 @@ class Database {
 	function trigger($event, $args = null) {
 		$args = func_get_args();
 		array_shift($args);
+		$args[] = $event;
 
 		$events = $this->splitEvents($event);
 
