@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="description" content="MicroDB is a file-based JSON object database with index support, written in PHP.">
+	<meta name="keywords" content="MicroDB, Database, PHP, File-based, JSON">
+	<meta name="author" content="Morris Brodersen">
+
+	<title>MicroDB</title>
+
+	<link href="css/bootstrap.min.css" rel="stylesheet">
+	<link href="css/main.css" rel="stylesheet">
+</head>
+
+<body>
+	
+<div id="container">
+	<header id="top" role="banner">
+		<h1>MicroDB</h1>
+		<p>A minimalistic file-based JSON object database with index support, written in PHP.</p>
+		
+		<nav id="nav" role="navigation">
+			<ul>
+				<li><b>Guide</b>
+					<ul>
+						<li><a href="#introduction">Introduction</a></li>
+						<li><a href="#basics">Basics</a></li>
+						<li><a href="#indices">Indices</a></li>
+						<li><a href="#events">Events</a></li>
+					</ul>
+				</li>
+			</ul>
+			<ul>
+				<li><b>Classes</b>
+					<ul>
+						<li><a href="#Database">Database</a></li>
+						<li><a href="#Index">Index</a></li>
+					</ul>
+				</li>
+			</ul>
+		</nav>
+	</header>
+
+    <main id="content" role="main">
+		<section id="introduction" class="guide">
+			<h2>Introduction</h2>
+		</section>
+		
+		<section id="Database" class="class">			
+			<h2>MicroDB\Database</h2>
+			<p>Represents a database in a single path.</p>
+			
+			<h3>Members</h3>
+			<p><code>$db->caching</code> Is caching enabled? Defaults to <code>true</code>.
+			
+			<h3>Methods</h3>
+			
+			<p><code>__construct($dir)</code></p>
+			<p>Constructor. Creates a database in the given directory.</p>
+		</section>
+		
+		<section id="Index" class="class">
+			<h2>MicroDB\Index</h2>
+			
+		</section>
+	</main>
+
+	<footer role="contentinfo">
+		
+	</footer>
+</div>
+
+	<script src="js/jquery-2.1.1.min.js"></script>
+	<script src="js/bootstrap.min.js"></script>
+	<script src="js/main.js"></script>
+
+</body>
+</html>
