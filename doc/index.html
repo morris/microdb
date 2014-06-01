@@ -4,13 +4,14 @@
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<meta name="description" content="MicroDB is a file-based JSON object database with index support, written in PHP.">
+	<meta name="description" content="MicroDB is a minimalistic file-based JSON object database written in PHP.">
 	<meta name="keywords" content="MicroDB, Database, PHP, File-based, JSON">
 	<meta name="author" content="Morris Brodersen">
 
 	<title>MicroDB</title>
 
 	<link href="css/bootstrap.min.css" rel="stylesheet">
+	<link href="css/bootstrap-theme.min.css" rel="stylesheet">
 	<link href="css/main.css" rel="stylesheet">
 	<link rel="stylesheet" href="http://yandex.st/highlightjs/8.0/styles/default.min.css">
 </head>
@@ -18,9 +19,9 @@
 <body>
 	
 <div id="container">
-	<header id="top" role="banner">
+	<header id="header" role="banner">
 		<h1>MicroDB</h1>
-		<p>A minimalistic file-based JSON object database, written in PHP.</p>
+		<p>A minimalistic file-based JSON object database written in PHP.</p>
 		
 		<nav id="nav" role="navigation">
 			<ul>
@@ -30,6 +31,7 @@
 						<li><a href="#basics">Basics</a></li>
 						<li><a href="#indices">Indices</a></li>
 						<li><a href="#events">Events</a></li>
+						<li><a href="#tests">Tests</a></li>
 					</ul>
 				</li>
 			</ul>
@@ -44,7 +46,7 @@
 		</nav>
 	</header>
 
-    <main id="content" role="main">
+    <main id="main" role="main">
 		<section id="introduction" class="guide">
 			<h2>Introduction</h2>
 			<p>TODO</p>
@@ -77,6 +79,14 @@ deleted ($id)</pre>
 			'Sorry, only admins are allowed to modify user data.'
 		);
 });</code></pre>
+				
+		</section>
+		
+		<section id="tests" class="guide">
+			<h2>Tests</h2>
+			<p>Before running the tests you must run <code>composer update</code> in the microdb
+directory. This will install development dependencies like PHPUnit. Then, you can run
+the tests with <code>vendor/bin/phpunit tests</code>.</p>
 				
 		</section>
 		

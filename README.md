@@ -1,6 +1,6 @@
 # MicroDB
 
-MicroDB is a file-based JSON object database, written in PHP.
+MicroDB is a minimalistic file-based JSON object database written in PHP.
 
 ## Usage
 
@@ -41,18 +41,13 @@ $db->delete('user1');
 The composer package name is `morris/microdb`. You can also download or fork the repository.
 
 
-## Documentation
-
-See `doc/index.html`.
-
-
-## Tests
-
-Before running the tests you must run `composer update` in the microdb
-directory. This will install development dependencies like PHPUnit. Run
-the tests with `vendor/bin/phpunit tests`.
-
-
 ## License
 
 MicroDB is licensed under the MIT License. See `LICENSE.md` for details.
+
+
+## Documentation
+
+For more documentation, examples and API, see `doc/index.html`.
+
+
