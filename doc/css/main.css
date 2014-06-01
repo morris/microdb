@@ -73,6 +73,10 @@ a:focus {
 	margin-bottom: 1em;
 }
 
+#main pre code {
+	white-space: pre;
+}
+
 #main .hljs {
 	background: transparent;
 	padding: 0;

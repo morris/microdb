@@ -1,33 +1,41 @@
-(function(scope) {
-	var $ = scope.jQuery;
+(function(window) {
+	var $ = window.jQuery;
 	
 	$(function() {
 		var $nav = $('#nav');
 		var $sections = $('#main section');
 		
 		// navigation
-		function goto(section) {
+		function show(section) {
 			$sections.hide();
 			$(section).show();
 			$nav.find('a').removeClass('active');
 			$nav.find('a[href='+section+']').addClass('active');
 		}
 		
+		// intial section
 		if(window.location.hash)
-			goto(window.location.hash);
+			show(window.location.hash);
 		else
-			goto('#introduction');
+			show('#basics');
 
-		$nav.on('click', 'a', function(e) {
-			goto($(this).attr('href'));
+		// history
+		$(document).on('click', 'a[href^=#]', function(e) {
+			e.preventDefault();
+			var href = $(this).attr('href');
+			window.history.pushState(null, null, href);
+			show(href);
 		});
 		
-		$nav.on('focus', 'a', function(e) {
-			$(this).blur();
+		// don't focus
+		$nav.on('focus', 'a', function() { $(this).blur() });
+		
+		$(window).on('popstate', function(e) {
+			show(window.location.hash);
 		});
 		
 		// replace tabs with spaces
-		$('code').each(function() {
+		$('pre').each(function() {
 			var $this = $(this);
 			$this.html($this.html().replace(/\t/gi, '    '));
 		});

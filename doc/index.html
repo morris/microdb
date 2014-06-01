@@ -8,7 +8,7 @@
 	<meta name="keywords" content="MicroDB, Database, PHP, File-based, JSON">
 	<meta name="author" content="Morris Brodersen">
 
-	<title>MicroDB</title>
+	<title>MicroDB &ndash; A minimalistic file-based JSON object database written in PHP</title>
 
 	<link href="css/bootstrap.min.css" rel="stylesheet">
 	<link href="css/bootstrap-theme.min.css" rel="stylesheet">
@@ -21,13 +21,12 @@
 <div id="container">
 	<header id="header" role="banner">
 		<h1>MicroDB</h1>
-		<p>A minimalistic file-based JSON object database written in PHP.</p>
+		<p>A minimalistic file-based JSON object database written in PHP</p>
 		
 		<nav id="nav" role="navigation">
 			<ul>
 				<li><b>Guide</b>
 					<ul>
-						<li><a href="#introduction">Introduction</a></li>
 						<li><a href="#basics">Basics</a></li>
 						<li><a href="#indices">Indices</a></li>
 						<li><a href="#events">Events</a></li>
@@ -47,39 +46,121 @@
 	</header>
 
     <main id="main" role="main">
-		<section id="introduction" class="guide">
-			<h2>Introduction</h2>
-			<p>TODO</p>
-		</section>
-		
 		<section id="basics" class="guide">
 			<h2>Basics</h2>
-			<p>TODO</p>
+			<p>The following code demonstrates all basic operations on a MicroDB database.</p>
+<pre><code>&lt?php
+
+// create database in direcotry "data"
+$db = new \MicroDB\Database('data');
+
+// save an item
+$db->save('user1', array(
+	'id' => 1,
+	'type' => 'user',
+	'name' => 'Foo Bar',
+	'email' => 'foo@bar.de',
+	'age' => 42
+));
+
+// load an item
+$user = $db->load('user1');
+
+// find an item
+$foo = $db->first(array('email' => 'foo@bar.de'));
+
+// find items with callback
+$adults = $db->find(function($data) { return @$data['age'] &gt;= 21; });
+
+// delete an item
+$db->delete('user1');</code></pre>
 		</section>
 		
 		<section id="indices" class="guide">
 			<h2>Indices</h2>
-			<p>TODO</p>
+<p>An index maps some scalar value to one or more database IDs. This
+mapping can be used to find objects more quickly.</p>
+<p>Indices must be created before any database operation to work.
+Usually you just create them directly after creating the database.
+<pre><code>&lt?php
+
+// create database
+$db = new \MicroDB\Database('data');
+
+// create index
+// maps the "email" attribute of any data object
+// updates itself whenever an object is saved or deleted
+$emailIndex = new \MicroDB\Index($db, 'email', 'email');
+
+// ...
+
+// using the index, you can quickly find items
+// this is faster than using $db->find(array('email' => 'foo@bar.de'));
+$foo = $emailIndex->first('foo@bar.de');
+
+// let's create a more complex index
+// this index keeps track of the number of posts by a user
+$postsIndex = new \MicroDB\Index($db, 'number', function($data) use ($db) {
+	// assuming that posts are stored inside user (not recommended, of course)
+	return count($data['posts']);
+});
+
+// then we can find all users with at least 100 posts
+$users = $postsIndex->find(function($key) { return $key >= 100; });
+</code></pre>
+
+<p>Note that the <code>Database</code> class does not use <code>Index</code> directly. Indices
+work by listening to <a href="#events">database events</a> and are
+stored as database objects.</p>
+
 		</section>
 		
 		<section id="events" class="guide">
-			<h2>Events</h2>
-			<p>The following events are triggered by MicroDB:</p>
+			
+<h2>Events</h2>
+<p>The following events (arguments in parentheses) are triggered by MicroDB:</p>
+
 <pre>beforeSave ($id, $data)
 saved ($id, $data)
 beforeLoad ($id)
 loaded ($id, $data)
 beforeDelete ($id)
 deleted ($id)</pre>
-			<p>For example, the following code prevents modifications on
-				user objects unless you are an admin:</p>
-<pre><code>$db->on('beforeSave, beforeDelete', function($id, $data) use ($app) {
+
+<p>For example, the following code prevents modifications on user
+objects unless you are an admin:</p>
+				
+<pre><code>&lt;?php
+
+$db->on('beforeSave, beforeDelete', function($id, $data) use ($app) {
 	if($data['type'] === 'user' && !$app->isAdmin())
 		throw new \Exception(
 			'Sorry, only admins are allowed to modify user data.'
 		);
 });</code></pre>
-				
+
+<p>You can also trigger events manually and unbind handlers:</p>
+
+<pre><code>&lt;?php
+
+$handler = function($arg) {
+	echo $arg;
+};
+
+// bind to custom event
+$db->on('hello', $handler);
+
+// trigger an event with arguments
+$db->trigger('hello', 'Hello World');
+
+// unbind a specific handler
+$db->off($handler);
+
+// unbind all handlers of an event
+$db->off('hello');</code></pre>
+		
+		
+		
 		</section>
 		
 		<section id="tests" class="guide">

@@ -36,6 +36,11 @@ class Index {
 		return $this->db->load($this->findIds($key));
 	}
 	
+	function first($key) {
+		$all = $this->db->load($this->findIds($key));
+		return @$all[0];
+	}
+	
 	/**
 	 * Find IDs that match a key/callback
 	 */
@@ -57,6 +62,11 @@ class Index {
 		}
 		
 		return $ids;
+	}
+	
+	function firstId($key) {
+		$all = $this->findIds($key);
+		return @$all[0];
 	}
 	
 	/**

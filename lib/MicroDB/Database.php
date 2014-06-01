@@ -116,6 +116,11 @@ class Database {
 		
 		return $results;
 	}
+	
+	function first($where) {
+		$all = $this->find($where);
+		return @$all[0];
+	}
 
 	/**
 	 * Put file contents
@@ -235,7 +240,7 @@ class Database {
 		foreach ($events as $event) {
 			foreach ($this->handlers[$event] as $priority => $handlers) {
 				foreach ($handlers as $i => $h) {
-					if ($handler === $h) {
+					if (!isset($handler) || $handler === $h) {
 						unset($this->handlers[$event][$priority][$i]);
 					}
 				}
