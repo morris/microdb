@@ -49,6 +49,20 @@ class Database {
 		
 		return $results;
 	}
+
+	/**
+	 * Save data to database
+	 */
+	public function save($id, $data) {		
+		$this->trigger('beforeSave', $id, $data);
+		
+		if($this->caching)
+			$this->cache[$id] = $data;
+		
+		$this->put($this->path . $id, json_encode($data));
+		
+		$this->trigger('saved', $id, $data);
+	}
 	
 	/**
 	 * Load data from database
@@ -76,23 +90,9 @@ class Database {
 		
 		return $data;
 	}
-
-	/**
-	 * Save data to database
-	 */
-	public function save($id, $data) {		
-		$this->trigger('beforeSave', $id, $data);
-		
-		if($this->caching)
-			$this->cache[$id] = $data;
-		
-		$this->put($this->path . $id, json_encode($data));
-		
-		$this->trigger('saved', $id, $data);
-	}
 	
 	/**
-	 * Delete item from database
+	 * Delete data from database
 	 */
 	public function delete($id) {
 		if(is_array($id)) {

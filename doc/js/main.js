@@ -24,5 +24,11 @@
 		$('#nav').on('focus', 'a', function(e) {
 			$(this).blur();
 		});
+		
+		// replace tabs with spaces...
+		$('code').each(function() {
+			var $this = $(this);
+			$this.html($this.html().replace(/\t/gi, '    '));
+		});
 	});
 })(this);

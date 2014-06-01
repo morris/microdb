@@ -12,6 +12,7 @@
 
 	<link href="css/bootstrap.min.css" rel="stylesheet">
 	<link href="css/main.css" rel="stylesheet">
+	<link rel="stylesheet" href="http://yandex.st/highlightjs/8.0/styles/default.min.css">
 </head>
 
 <body>
@@ -46,11 +47,44 @@
     <main id="content" role="main">
 		<section id="introduction" class="guide">
 			<h2>Introduction</h2>
+			<p>TODO</p>
+		</section>
+		
+		<section id="basics" class="guide">
+			<h2>Basics</h2>
+			<p>TODO</p>
+		</section>
+		
+		<section id="indices" class="guide">
+			<h2>Indices</h2>
+			<p>TODO</p>
+		</section>
+		
+		<section id="events" class="guide">
+			<h2>Events</h2>
+			<p>The following events are triggered by MicroDB:</p>
+<pre>beforeSave ($id, $data)
+saved ($id, $data)
+beforeLoad ($id)
+loaded ($id, $data)
+beforeDelete ($id)
+deleted ($id)</pre>
+			<p>For example, the following code prevents modifications on
+				user objects unless you are an admin:</p>
+<pre><code>$db->on('beforeSave, beforeDelete', function($id, $data) use ($app) {
+	if($data['type'] === 'user' && !$app->isAdmin())
+		throw new \Exception(
+			'Sorry, only admins are allowed to modify user data.'
+		);
+});</code></pre>
+				
 		</section>
 		
 		<section id="Database" class="class">			
 			<h2>MicroDB\Database</h2>
 			<p>Represents a database in a single path.</p>
+			
+			<p>TODO</p>
 			
 			<h3>Members</h3>
 			<p><code>$db->caching</code> Is caching enabled? Defaults to <code>true</code>.
@@ -63,18 +97,20 @@
 		
 		<section id="Index" class="class">
 			<h2>MicroDB\Index</h2>
-			
+			<p>TODO</p>
 		</section>
 	</main>
 
-	<footer role="contentinfo">
-		
+	<footer id="footer" role="contentinfo">
+		MicroDB is &copy; 2014 Morris Brodersen &middot; <a href="http://morrisbrodersen.de" target="_blank">morrisbrodersen.de</a>
 	</footer>
 </div>
 
 	<script src="js/jquery-2.1.1.min.js"></script>
 	<script src="js/bootstrap.min.js"></script>
 	<script src="js/main.js"></script>
-
+	
+	<script src="http://yandex.st/highlightjs/8.0/highlight.min.js"></script>
+	<script>hljs.initHighlightingOnLoad();</script>
 </body>
 </html>
