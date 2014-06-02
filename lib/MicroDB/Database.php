@@ -27,7 +27,7 @@ class Database {
 		if($this->caching)
 			$this->cache[$id] = $data;
 		
-		$this->put($this->path . $id, json_encode($data));
+		$this->put($this->path.$id, json_encode($data));
 		
 		$this->trigger('saved', $id, $data);
 	}
@@ -51,7 +51,7 @@ class Database {
 			return $this->cache[$id];
 		}
 		
-		$data = json_decode($this->get($this->path . $id), true);
+		$data = json_decode($this->get($this->path.$id), true);
 		
 		if($this->caching)
 			$this->cache[$id] = $data;
@@ -78,7 +78,7 @@ class Database {
 		if($this->caching)
 			unset($this->cache[$id]);
 		
-		$return = unlink($this->path . $id);
+		$return = unlink($this->path.$id);
 		
 		$this->trigger('deleted', $id, $return);
 		

@@ -27,12 +27,12 @@
 			show(href);
 		});
 		
-		// don't focus
-		$nav.on('focus', 'a', function() { $(this).blur() });
-		
 		$(window).on('popstate', function(e) {
 			show(window.location.hash);
 		});
+		
+		// don't focus
+		$nav.on('focus', 'a', function() { $(this).blur() });
 		
 		// replace tabs with spaces
 		$('pre').each(function() {
