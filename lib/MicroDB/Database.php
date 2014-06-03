@@ -77,7 +77,7 @@ class Database {
 		if($this->caching)
 			unset($this->cache[$id]);
 		
-		$return = unlink($this->path.$id);
+		$return = $this->erase($this->path.$id);
 		
 		$this->trigger('deleted', $id, $return);
 		
@@ -283,7 +283,7 @@ class Database {
 	}
 	
 	/**
-	 * Map of registered handlers
+	 * Map of trigger handlers
 	 */
 	protected $handlers = array();
 }
