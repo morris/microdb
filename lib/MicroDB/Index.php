@@ -51,14 +51,11 @@ class Index {
 		
 		if(is_callable($key)) {
 			foreach($this->map as $k => $i) {
-				if($key($k)) {
+				if($key($k))
 					$ids = array_merge($ids, $i);
-				}
 			}
-		} else {
-			if(isset($this->map[$key])) {
-				$ids = array_merge($ids, $this->map[$key]);
-			}
+		} else if(isset($this->map[$key])) {
+			$ids = array_merge($ids, $this->map[$key]);
 		}
 		
 		return $ids;
@@ -75,33 +72,42 @@ class Index {
 	function update($id, $data) {
 		$this->load();
 		
-		$key = $this->key($data);
+		// compute new keys
+		$keys = $this->keys($data);
 		
-		if($key === null)
+		// skip if key is undefined
+		if($keys === null || $keys === false)
 			return;
+		if(!is_array($keys))
+			$keys = array($keys);
 		
-		// find old entry
-		$old = false;
-		$offset = false;
+		$save = false;
+		$oldKeys = @$this->inverse[$id];
 		
-		foreach($this->map as $old => $array) {
-			$offset = array_search($id, $array, true);
-			if($offset !== false)
-				break;
-		}
-		
-		if($offset === false)
-			$old = false;
-		
-		// if value has changed, we need to update the index
-		
-		if($old !== $key) {				
-			if($offset !== false)
-				array_splice($this->map[$old], $offset, 1);
+		// insert new keys
+		foreach($keys as $key) {
+			// skip if key is already in index
+			if(isset($oldKeys[$key])) {
+				unset($oldKeys[$key]); // don't remove that entry later
+				continue;
+			}
 			
 			$this->map[$key][] = $id;
-			$this->save();
+			$this->inverse[$id][$key] = count($this->map[$key]) - 1;
+			$save = true;
 		}
+		
+		// remove remaining invalid entries
+		if(!empty($oldKeys)) {
+			foreach($oldKeys as $key => $offset) {
+				array_splice($this->map[$key], $offset, 1);
+				unset($this->inverse[$id][$key]);
+				$save = true;
+			}
+		}
+		
+		if($save)
+			$this->save();
 	}
 	
 	/**
@@ -109,22 +115,21 @@ class Index {
 	 */
 	function delete($id) {
 		$this->load();
+
+		$save = false;
+		$oldKeys = @$this->inverse[$id];
 		
-		// find old entry
-		$old = false;
-		$offset = false;
-		
-		foreach($this->map as $old => $array) {
-			$offset = array_search($id, $array, true);
-			if($offset !== false)
-				break;
+		// remove all old entries
+		if(!empty($oldKeys)) {
+			foreach($oldKeys as $key => $offset) {
+				array_splice($this->map[$key], $offset, 1);
+				unset($this->inverse[$id][$key]);
+				$save = true;
+			}
 		}
 		
-		// remove, if any
-		if($offset !== false) {
-			array_splice($this->map[$old], $offset, 1);
+		if($save)
 			$this->save();
-		}
 	}
 	
 	/**
@@ -133,10 +138,14 @@ class Index {
 	function load() {
 		if(!isset($this->map)) {
 			$index = $this->db->load('index_'.$this->name);
+			
 			$this->map = @$index['map'];
-			if(empty($this->map)) {
+			$this->inverse = @$index['inverse'];
+			
+			if(empty($this->map))
 				$this->map = array();
-			}
+			if(empty($this->inverse))
+				$this->inverse = array();
 		}
 	}
 	
@@ -147,7 +156,8 @@ class Index {
 		$this->db->save('index_'.$this->name, array(
 			'name' => $this->name,
 			'type' => 'index',
-			'map' => $this->map
+			'map' => $this->map,
+			'inverse' => $this->inverse
 		));
 	}
 	
@@ -161,17 +171,16 @@ class Index {
 	/**
 	 * Compute index key of data
 	 */
-	function key($data) {
-		$key = $this->keyFunc;
-		if(is_callable($key))
-			return $key($data);
-		return @$data[$key];
+	function keys($data) {
+		$keys = $this->keyFunc;
+		if(is_callable($keys))
+			return $keys($data);
+		return @$data[$keys];
 	}
 	
 	protected $db;
 	protected $name;
 	protected $keyFunc;
-	protected $validFunc;
-	protected $unique;
-	protected $map = array();
+	protected $map;
+	protected $inverse;
 }
