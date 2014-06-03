@@ -119,6 +119,11 @@ class DatabaseTest extends PHPUnit_Framework_TestCase {
 		$this->assertEquals(false, isset($posts['post2']));
 	}
 	
+	function testRepair() {
+		$this->db->repair();
+		$this->testIndex();
+	}
+	
 	function testEvents() {
 		$a = array();
 		

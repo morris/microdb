@@ -18,15 +18,9 @@ class Index {
 		$this->keyFunc = $keyFunc;
 		
 		// register with database
-		$index = $this;
-		
-		$this->db->on('saved', function($id, $data) use ($index) {
-			$index->update($id, $data);
-		});
-		
-		$this->db->on('deleted', function($id) use ($index) {
-			$index->delete($id);
-		});
+		$this->db->on('saved', array($this, 'update'));
+		$this->db->on('deleted', array($this, 'delete'));
+		$this->db->on('repair', array($this, 'rebuild'));
 	}
 	
 	/**
@@ -42,7 +36,7 @@ class Index {
 	}
 	
 	/**
-	 * Find IDs that match a key/callback
+	 * Find ids that match a key/callback
 	 */
 	function findIds($key) {
 		$this->load();
@@ -111,6 +105,24 @@ class Index {
 	}
 	
 	/**
+	 * Rebuild index completely
+	 */
+	function rebuild() {
+		$this->rebuilding = true;
+		
+		$this->map = array();
+		$this->inverse = array();
+		
+		$index = $this;
+		$this->db->eachId(function($id) use ($index) {
+			$index->update($id, $index->db->load($id));
+		});
+		
+		$this->rebuilding = false;
+		$this->save();
+	}
+	
+	/**
 	 * Delete item from index
 	 */
 	function delete($id) {
@@ -153,6 +165,9 @@ class Index {
 	 * Save index
 	 */
 	function save() {
+		if($this->rebuilding)
+			return;
+		
 		$this->db->save('index_'.$this->name, array(
 			'name' => $this->name,
 			'type' => 'index',
@@ -183,4 +198,5 @@ class Index {
 	protected $keyFunc;
 	protected $map;
 	protected $inverse;
+	protected $rebuilding = false;
 }

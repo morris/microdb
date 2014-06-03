@@ -123,6 +123,15 @@ class Database {
 	}
 	
 	/**
+	 * Triggers "repair" event.
+	 * On this event, applications should repair inconsistencies in the
+	 * database, e.g. rebuild indices.
+	 */
+	function repair() {
+		$this->trigger('repair');
+	}
+	
+	/**
 	 * Call a function for each id in the database
 	 */
 	function eachId($func) {
