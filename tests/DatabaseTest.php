@@ -19,22 +19,17 @@ class DatabaseTest extends PHPUnit_Framework_TestCase {
 	}
 	
 	static function tearDownAfterClass() {
-		//rmdir('tests/data');
+		rmdir('tests/data');
 	}
 	
 	function setUp() {
+		// create db
 		$this->db = new \MicroDB\Database('tests/data');
 		
+		// create indices
 		$this->typeIndex = new \MicroDB\Index($this->db, 'type', 'type');
 		
-		$this->titleIndex = new \MicroDB\Index(
-			$this->db,
-			'title',
-			function($data) {
-				if(@$data['type'] === 'post')
-					return $data['title'];
-			}
-		);
+		$this->titleIndex = new \MicroDB\Index($this->db, 'title', 'title');
 		
 		$this->tagsIndex = new \MicroDB\Index(
 			$this->db,
@@ -45,6 +40,7 @@ class DatabaseTest extends PHPUnit_Framework_TestCase {
 			}
 		);
 		
+		// some tags
 		$tags = array(
 			'news' => 1,
 			'weather' => 1,
@@ -54,7 +50,17 @@ class DatabaseTest extends PHPUnit_Framework_TestCase {
 			'microdb' => 1
 		);
 		
-		for($i = 0; $i < 12; ++$i) {
+		// create users
+		for($i = 1; $i <= 4; ++$i) {
+			$this->db->save('user'.$i, array(
+				'id' => $i,
+				'name' => 'User '.$i,
+				'type' => 'user'
+			));
+		}
+		
+		// create posts
+		for($i = 1; $i <= 12; ++$i) {
 			$this->db->save('post'.$i, array(
 				'id' => $i,
 				'title' => 'Lorem ipsum ' . ($i % 4),
@@ -63,33 +69,24 @@ class DatabaseTest extends PHPUnit_Framework_TestCase {
 				'author' => 'user'.rand(1, 3)
 			));
 		}
-		
-		for($i = 0; $i < 4; ++$i) {
-			$this->db->save('user'.$i, array(
-				'id' => $i,
-				'name' => 'dude'.$i,
-				'type' => 'user'
-			));
-		}
 	}
 	
 	function tearDown() {
 		// remove all data files
 		$files = $this->db->scandir('tests/data');
 		foreach($files as $file) {
-			//unlink('tests/data/'.$file);
+			unlink('tests/data/'.$file);
 		}
 	}
 	
 	function testLoad() {
-		$post = $this->db->load('post0');
-		$this->assertEquals('post', $post['type']);
+		$t = $this->db->load('user1');
+		$this->assertEquals('user', $t['type']);
     }
     
     function testFind() {
-		$posts = $this->db->find(array('type' => 'post'));
-		
-		$this->assertEquals(12, count($posts));
+		$users = $this->db->find(array('type' => 'user'));
+		$this->assertEquals(4, count($users));
 	}
 	
 	function testDelete() {
