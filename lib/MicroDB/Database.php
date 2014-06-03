@@ -10,12 +10,11 @@ class Database {
 	/**
 	 * Constructor
 	 */
-	public function __construct($path, $idFunc = '?') {
+	public function __construct($path) {
 		$path = (string) $path;
 		if (substr($path, -1) != '/')
 			$path .= '/';
 		$this->path = $path;
-		$this->idFunc = $idFunc;
 	}
 
 	/**
@@ -86,21 +85,19 @@ class Database {
 	}
 	
 	/**
-	 * Find data using either key-value map or callback
+	 * Find data matching key-value map or callback
 	 */
 	public function find($where = array()) {
-		$ids = $this->scandir($this->path);
-		
 		$results = array();
 		
 		if(is_callable($where)) {
-			foreach($ids as $id) {
+			$this->eachId(function($id) use (&$results, $where) {
 				$data = $this->load($id);
 				if($where($data))
 					$results[$id] = $data;
-			}
+			});
 		} else {
-			foreach($ids as $id) {
+			$this->eachId(function($id) use (&$results, $where) {
 				$match = true;
 				$data = $this->load($id);
 				foreach($where as $key => $value) {
@@ -111,72 +108,67 @@ class Database {
 				}
 				if($match)
 					$results[$id] = $data;
-			}
+			});
 		}
 		
 		return $results;
 	}
 	
+	/**
+	 * Find first item key-value map or callback
+	 */
 	function first($where) {
 		$all = $this->find($where);
 		return @$all[0];
+	}
+	
+	/**
+	 * Call a function for each id in the database
+	 */
+	function eachId($func) {
+		$res = opendir($this->path);
+
+		while(($id = readdir($res)) !== false) {
+			if($id == "." || $id == "..")
+				continue;
+
+			$func($id);
+		}
 	}
 
 	/**
 	 * Put file contents
 	 */
-	function put($file, $data, $mode = false) {
+	protected function put($file, $data, $mode = false) {
 		// don't overwrite if unchanged, just touch
-		if(file_exists($file) && file_get_contents($file) === $data) {
+		if(is_file($file) && file_get_contents($file) === $data) {
 			touch($file);
 			return;
 		}
 	
-		if(!$fp = @fopen($file, 'wb')) {
-			throw new \Exception('MicroDB error: Could not open '.$file.' for writing');
-		}
-
-		fwrite($fp, $data);
-		fclose($fp);
-
-		$this->chmod($file, $mode);
+		file_put_contents($file, $data);
+		chmod($file, $this->mode);
 		return true;
 	}
 
 	/**
 	 * Get file contents
 	 */
-	function get($file) {
-		if(!$this->check($file))
+	protected function get($file) {
+		if(!is_file($file))
 			return null;
 		return file_get_contents($file);
 	}
 	
 	/**
-	 * Set file permissions
+	 * Remove file from filesystem
 	 */
-	function chmod($file, $mode = false) {
-		if(!$mode)
-			$mode = 0644;
-		return @chmod($file, $mode);
-	}
-
-	/**
-	 * Check if file exists
-	 */
-	function check($path) {
-		return file_exists($path);
+	protected function erase($file) {
+		return unlink($file);
 	}
 	
 	/**
-	 * List files in a directory
-	 */
-	function scandir($path) {
-		return array_slice(scandir($path), 2);
-	}
-	
-	/**
-	 * Directory of this database
+	 * Directory where data files are stored
 	 */
 	protected $path;
 	
@@ -189,6 +181,11 @@ class Database {
 	 * Is caching enabled?
 	 */
 	public $caching = true;
+	
+	/**
+	 * Mode for created files
+	 */
+	public $mode = 0644;
 	
 	// EVENTS
 	

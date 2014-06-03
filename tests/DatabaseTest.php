@@ -14,7 +14,7 @@ class DatabaseTest extends PHPUnit_Framework_TestCase {
 	private $tagsIndex;
 
 	static function setUpBeforeClass() {
-		@mkdir('tests/data', 0644, true);
+		mkdir('tests/data', 0644, true);
 
 	}
 	
@@ -73,7 +73,7 @@ class DatabaseTest extends PHPUnit_Framework_TestCase {
 	
 	function tearDown() {
 		// remove all data files
-		$files = $this->db->scandir('tests/data');
+		$files = array_slice(scandir('tests/data'), 2);
 		foreach($files as $file) {
 			unlink('tests/data/'.$file);
 		}
