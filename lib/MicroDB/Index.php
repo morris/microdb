@@ -40,8 +40,15 @@ class Index {
 				}
 			}
 			return $ids;
-		} else if(isset($this->map[$where])) {
-			return $this->map[$where];
+		}
+		
+		if($first) {
+			if(isset($this->map[$where][0]))
+				return $this->map[$where][0];
+		} else {
+			if(isset($this->map[$where]))
+				return $this->map[$where];
+			return array();
 		}
 	}
 	

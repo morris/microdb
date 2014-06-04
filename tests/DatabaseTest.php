@@ -104,9 +104,11 @@ class DatabaseTest extends PHPUnit_Framework_TestCase {
 	function testIndex() {
 		$a = self::$typeIndex->find('post');
 		$b = self::$typeIndex->find('user');
+		$c = self::$typeIndex->find('foo');
 		
 		$this->assertEquals(12, count($a));
 		$this->assertEquals(4, count($b));
+		$this->assertTrue(is_array($c));
 	}
 	
 	function testIndex2() {
