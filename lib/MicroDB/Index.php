@@ -12,10 +12,11 @@ class Index {
 	 * Creates an index on a database with a name and an index key
 	 * function. The index listens to database events to update itself.
 	 */
-	function __construct($db, $name, $keyFunc) {
+	function __construct($db, $name, $keyFunc, $compare = null) {
 		$this->db = $db;
 		$this->name = $name;
 		$this->keyFunc = $keyFunc;
+		$this->compare = $compare;
 		
 		// register with database
 		$this->db->on('saved', array($this, 'update'));
@@ -174,7 +175,7 @@ class Index {
 			if(empty($this->inverse))
 				$this->inverse = array();
 				
-			ksort($this->map); // json does not guarantee sorted storage
+			$this->sort(); // json does not guarantee sorted storage
 		}
 	}
 	
@@ -185,7 +186,7 @@ class Index {
 		if($this->rebuilding)
 			return;
 			
-		ksort($this->map); // keep map sorted by key
+		$this->sort(); // keep map sorted by key
 		
 		$this->db->save('index_'.$this->name, array(
 			'name' => $this->name,
@@ -212,9 +213,16 @@ class Index {
 		return $this->name;
 	}
 	
+	protected function sort() {
+		if(is_callable($this->compare))
+			return uksort($this->map, $this->compare);
+		return ksort($this->map);
+	}
+	
 	protected $db;
 	protected $name;
 	protected $keyFunc;
+	protected $compare;
 	protected $map;
 	protected $inverse;
 	protected $rebuilding = false;

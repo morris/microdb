@@ -12,6 +12,7 @@ class DatabaseTest extends PHPUnit_Framework_TestCase {
 	static function create() {
 		// create db
 		self::$db = new \MicroDB\Database('tests/data');
+		self::$db->caching = false;
 		
 		// create indices
 		self::$typeIndex = new \MicroDB\Index(self::$db, 'type', 'type');
