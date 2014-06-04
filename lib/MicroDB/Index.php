@@ -24,47 +24,62 @@ class Index {
 	}
 	
 	/**
-	 * Find and load items that match a key/callback
+	 * Find ids that match a key/callback
 	 */
-	function find($key) {
-		return $this->db->load($this->findIds($key));
+	function find($where, $first = false) {
+		$this->restore();
+		
+		if(is_callable($where)) {
+			$ids = array();
+			foreach($this->map as $k => $i) {
+				if($where($k)) {
+					if($first)
+						return $i;
+					$ids = array_merge($ids, $i);
+				}
+			}
+			return $ids;
+		} else if(isset($this->map[$where])) {
+			return $this->map[$where];
+		}
 	}
 	
-	function first($key) {
-		$all = $this->db->load($this->findIds($key));
-		return @$all[0];
+	function first($where) {
+		return $this->find($where, true);
 	}
 	
 	/**
-	 * Find ids that match a key/callback
+	 * Get slice of mapping, useful for paging
 	 */
-	function findIds($key) {
-		$this->load();
+	function slice($offset = 0, $length = null) {
+		$this->restore();
 		
-		$ids = array();
-		
-		if(is_callable($key)) {
-			foreach($this->map as $k => $i) {
-				if($key($k))
-					$ids = array_merge($ids, $i);
-			}
-		} else if(isset($this->map[$key])) {
-			$ids = array_merge($ids, $this->map[$key]);
-		}
-		
-		return $ids;
+		$slice = array_slice($this->map, $offset, $length);
+		return call_user_func_array('array_merge', $slice);
 	}
 	
-	function firstId($key) {
-		$all = $this->findIds($key);
-		return @$all[0];
+	/**
+	 * Load items that match a key/callback
+	 */
+	function load($where, $first = false) {
+		$ids = $this->find($where, $first);
+		return $this->db->load($ids);
+	}
+	
+	function loadFirst($where) {
+		return $this->load($where, true);
+	}
+	
+	function loadSlice($offset = 0, $length = null) {
+		$ids = $this->slice($offset, $length);
+		return $this->db->load($ids);
 	}
 	
 	/**
 	 * Update item in index
 	 */
 	function update($id, $data) {
-		$this->load();
+		$this->restore();
 		
 		// compute new keys
 		$keys = $this->keys($data);
@@ -75,7 +90,7 @@ class Index {
 		if(!is_array($keys))
 			$keys = array($keys);
 		
-		$save = false;
+		$store = false;
 		$oldKeys = @$this->inverse[$id];
 		
 		// insert new keys
@@ -88,7 +103,7 @@ class Index {
 			
 			$this->map[$key][] = $id;
 			$this->inverse[$id][$key] = count($this->map[$key]) - 1;
-			$save = true;
+			$store = true;
 		}
 		
 		// remove remaining invalid entries
@@ -96,12 +111,34 @@ class Index {
 			foreach($oldKeys as $key => $offset) {
 				array_splice($this->map[$key], $offset, 1);
 				unset($this->inverse[$id][$key]);
-				$save = true;
+				$store = true;
 			}
 		}
 		
-		if($save)
-			$this->save();
+		if($store)
+			$this->store();
+	}
+	
+	/**
+	 * Delete item from index
+	 */
+	function delete($id) {
+		$this->restore();
+
+		$store = false;
+		$oldKeys = @$this->inverse[$id];
+		
+		// remove all old entries
+		if(!empty($oldKeys)) {
+			foreach($oldKeys as $key => $offset) {
+				array_splice($this->map[$key], $offset, 1);
+				unset($this->inverse[$id][$key]);
+				$store = true;
+			}
+		}
+		
+		if($store)
+			$this->store();
 	}
 	
 	/**
@@ -119,35 +156,13 @@ class Index {
 		});
 		
 		$this->rebuilding = false;
-		$this->save();
-	}
-	
-	/**
-	 * Delete item from index
-	 */
-	function delete($id) {
-		$this->load();
-
-		$save = false;
-		$oldKeys = @$this->inverse[$id];
-		
-		// remove all old entries
-		if(!empty($oldKeys)) {
-			foreach($oldKeys as $key => $offset) {
-				array_splice($this->map[$key], $offset, 1);
-				unset($this->inverse[$id][$key]);
-				$save = true;
-			}
-		}
-		
-		if($save)
-			$this->save();
+		$this->store();
 	}
 	
 	/**
 	 * Load index
 	 */
-	function load() {
+	function restore() {
 		if(!isset($this->map)) {
 			$index = $this->db->load('index_'.$this->name);
 			
@@ -158,15 +173,19 @@ class Index {
 				$this->map = array();
 			if(empty($this->inverse))
 				$this->inverse = array();
+				
+			ksort($this->map); // json does not guarantee sorted storage
 		}
 	}
 	
 	/**
 	 * Save index
 	 */
-	function save() {
+	function store() {
 		if($this->rebuilding)
 			return;
+			
+		ksort($this->map); // keep map sorted by key
 		
 		$this->db->save('index_'.$this->name, array(
 			'name' => $this->name,
@@ -177,20 +196,20 @@ class Index {
 	}
 	
 	/**
-	 * Get name of index
-	 */
-	function getName() {
-		return $this->name;
-	}
-	
-	/**
-	 * Compute index key of data
+	 * Compute index key(s) of data
 	 */
 	function keys($data) {
 		$keys = $this->keyFunc;
 		if(is_callable($keys))
 			return $keys($data);
 		return @$data[$keys];
+	}
+	
+	/**
+	 * Get name of index
+	 */
+	function getName() {
+		return $this->name;
 	}
 	
 	protected $db;

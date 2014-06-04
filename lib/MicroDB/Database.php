@@ -10,7 +10,7 @@ class Database {
 	/**
 	 * Constructor
 	 */
-	public function __construct($path) {
+	function __construct($path) {
 		$path = (string) $path;
 		if (substr($path, -1) != '/')
 			$path .= '/';
@@ -20,7 +20,7 @@ class Database {
 	/**
 	 * Save data to database
 	 */
-	public function save($id, $data) {		
+	function save($id, $data) {
 		$this->trigger('beforeSave', $id, $data);
 		
 		if($this->caching)
@@ -34,7 +34,7 @@ class Database {
 	/**
 	 * Load data from database
 	 */
-	public function load($id) {
+	function load($id) {
 		if(is_array($id)) {
 			$results = array();
 			foreach($id as $i) {
@@ -63,7 +63,7 @@ class Database {
 	/**
 	 * Delete data from database
 	 */
-	public function delete($id) {
+	function delete($id) {
 		if(is_array($id)) {
 			$results = array();
 			foreach($id as $i) {
@@ -87,17 +87,20 @@ class Database {
 	/**
 	 * Find data matching key-value map or callback
 	 */
-	public function find($where = array()) {
+	function find($where = array(), $first = false) {
 		$results = array();
 		
 		if(is_callable($where)) {
-			$this->eachId(function($id) use (&$results, $where) {
+			$this->eachId(function($id) use (&$results, $where, $first) {
 				$data = $this->load($id);
-				if($where($data))
+				if($where($data)) {
+					if($first)
+						return $data;
 					$results[$id] = $data;
+				}
 			});
 		} else {
-			$this->eachId(function($id) use (&$results, $where) {
+			$this->eachId(function($id) use (&$results, $where, $first) {
 				$match = true;
 				$data = $this->load($id);
 				foreach($where as $key => $value) {
@@ -106,8 +109,11 @@ class Database {
 						break;
 					}
 				}
-				if($match)
+				if($match) {
+					if($first)
+						return $data;
 					$results[$id] = $data;
+				}
 			});
 		}
 		
@@ -118,8 +124,7 @@ class Database {
 	 * Find first item key-value map or callback
 	 */
 	function first($where) {
-		$all = $this->find($where);
-		return @$all[0];
+		return $this->find($where, true);
 	}
 	
 	/**
