@@ -23,9 +23,6 @@ class Database {
 	function save($id, $data) {
 		$this->trigger('beforeSave', $id, $data);
 		
-		if($this->caching)
-			$this->cache[$id] = $data;
-		
 		$this->put($this->path.$id, json_encode($data));
 		
 		$this->trigger('saved', $id, $data);
@@ -45,15 +42,7 @@ class Database {
 		
 		$this->trigger('beforeLoad', $id);
 		
-		if($this->caching && isset($this->cache[$id])) {
-			$this->trigger('loaded', $id, $this->cache[$id]);
-			return $this->cache[$id];
-		}
-		
 		$data = json_decode($this->get($this->path.$id), true);
-		
-		if($this->caching)
-			$this->cache[$id] = $data;
 			
 		$this->trigger('loaded', $id, $data);
 		
@@ -73,9 +62,6 @@ class Database {
 		}
 		
 		$this->trigger('beforeDelete', $id);
-		
-		if($this->caching)
-			unset($this->cache[$id]);
 		
 		$return = $this->erase($this->path.$id);
 		
@@ -143,10 +129,36 @@ class Database {
 		$res = opendir($this->path);
 
 		while(($id = readdir($res)) !== false) {
-			if($id == "." || $id == "..")
+			if($id == "." || $id == ".." || preg_match('/\.lock$/', $id))
 				continue;
 
 			$func($id);
+		}
+	}
+	
+	/**
+	 * Call a function in a mutually exclusive way, locking on a file
+	 */
+	function synchronized($lock, $func) {
+		$file = $this->path.$lock.'.lock';
+		touch($file);
+		chmod($file, $this->mode);
+		
+		$handle = fopen($file, 'r');
+
+		if ($handle && flock($handle, LOCK_EX)) {
+			try {
+				$return = $func();
+				flock($handle, LOCK_UN);
+				fclose($handle);
+				return $return;
+			} catch(\Exception $e) {
+				flock($handle, LOCK_UN);
+				fclose($handle);
+				throw $e;
+			}
+		} else {
+			throw new \Exception('Unable to synchronize over '.$lock);
 		}
 	}
 
@@ -157,6 +169,7 @@ class Database {
 		// don't overwrite if unchanged, just touch
 		if(is_file($file) && file_get_contents($file) === $data) {
 			touch($file);
+			chmod($file, $this->mode);
 			return;
 		}
 	
@@ -182,19 +195,16 @@ class Database {
 	}
 	
 	/**
+	 * Get data path
+	 */
+	public function getPath() {
+		return $this->path;
+	}
+	
+	/**
 	 * Directory where data files are stored
 	 */
 	protected $path;
-	
-	/**
-	 * Maps ids to cached data
-	 */
-	public $cache = array();
-	
-	/**
-	 * Is caching enabled?
-	 */
-	public $caching = true;
 	
 	/**
 	 * Mode for created files

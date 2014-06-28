@@ -12,16 +12,15 @@ class DatabaseTest extends PHPUnit_Framework_TestCase {
 	static function create() {
 		// create db
 		self::$db = new \MicroDB\Database('tests/data');
-		self::$db->caching = false;
 		
 		// create indices
-		self::$typeIndex = new \MicroDB\Index(self::$db, 'type', 'type');
+		self::$typeIndex = new \MicroDB\Index(self::$db, 'index_type', 'type');
 		
-		self::$titleIndex = new \MicroDB\Index(self::$db, 'title', 'title');
+		self::$titleIndex = new \MicroDB\Index(self::$db, 'index_title', 'title');
 		
 		self::$tagsIndex = new \MicroDB\Index(
 			self::$db,
-			'tags',
+			'index_tags',
 			function($data) {
 				if(@$data['type'] === 'post')
 					return $data['tags'];
@@ -37,7 +36,7 @@ class DatabaseTest extends PHPUnit_Framework_TestCase {
 			'javascript' => 1,
 			'microdb' => 1
 		);
-		
+	
 		// create users
 		for($i = 1; $i <= 4; ++$i) {
 			self::$db->save('user'.$i, array(
@@ -165,11 +164,32 @@ class DatabaseTest extends PHPUnit_Framework_TestCase {
 		$this->assertEquals($ex, $a);
 	}
 	
-	function offtestNextFile() {
-		touch('tests/data/foo1');
-		touch('tests/data/foo2');
-		$this->assertEquals('foo3', self::$db->nextFile('foo?'));
-		unlink('tests/data/foo1');
-		unlink('tests/data/foo2');
+	function testSynchronized() {
+		$a = array();
+
+		self::$db->synchronized('sync', function() use (&$a) {
+			$a[] = 'called';
+			
+			self::$db->eachId(function($id) {
+				if($id == 'sync.lock')
+					$a[] = 'each';
+			});
+			
+			$file = self::$db->getPath().'sync.lock';
+			$handle = fopen($file, 'w+');
+			if ($handle && flock($handle, LOCK_EX|LOCK_NB, $wouldblock)) {
+				flock($handle, LOCK_UN);
+				fclose($handle);
+			} else {
+				$a[] = 'locked';
+			}
+			
+			// this fails on windows 8
+			// whereas LOCK_NB is supported, at least by windows 8
+			$this->assertEquals(1, $wouldblock);
+		});
+		
+		$ex = array('called', 'locked');
+		$this->assertEquals($ex, $a);
 	}
 }
