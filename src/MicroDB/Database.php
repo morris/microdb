@@ -22,7 +22,7 @@ class Database {
 	 */
 	function create($data = array()) {
 		$self = $this;
-		return $this->synchronized('__auto', function() use ($self, $data) {
+		return $this->synchronized('_auto', function() use ($self, $data) {
 			$next = 1;
 			if($self->exists('_auto'))
 				$next = $self->load('_auto', 'next');
@@ -167,32 +167,6 @@ class Database {
 	}
 	
 	/**
-	 * Call a function in a mutually exclusive way, locking on a file
-	 */
-	function synchronized($lock, $func) {
-		$file = $this->path . '_' . $lock . '_lock';
-		touch($file);
-		chmod($file, $this->mode);
-		
-		$handle = fopen($file, 'r');
-
-		if ($handle && flock($handle, LOCK_EX)) {
-			try {
-				$return = $func();
-				flock($handle, LOCK_UN);
-				fclose($handle);
-				return $return;
-			} catch(\Exception $e) {
-				flock($handle, LOCK_UN);
-				fclose($handle);
-				throw $e;
-			}
-		} else {
-			throw new \Exception('Unable to synchronize over '.$lock);
-		}
-	}
-	
-	/**
 	 * Trigger an event only if id is not hidden
 	 */
 	function triggerId($event, $id, $args = null) {
@@ -208,6 +182,49 @@ class Database {
 	function hidden($id) {
 		return $id{0} == '_';
 	}
+	
+	// SYNCHRONIZATION
+	
+	/**
+	 * Call a function in a mutually exclusive way, locking on a file
+	 * A process will only block other processes and never block itself,
+	 * so you can safely nest synchronized operations.
+	 */
+	function synchronized($lock, $func) {
+		// if already locked by this process, just call function
+		if(isset($this->locks[$lock])) {
+			return $func();
+		}
+		
+		// otherwise, acquire lock
+		$file = $this->path . '_' . $lock . '_lock';
+		$handle = fopen($file, 'w');
+
+		if($handle && flock($handle, LOCK_EX)) {
+			$this->locks[$lock] = true;
+			try {
+				$return = $func();
+				unset($this->locks[$lock]);
+				flock($handle, LOCK_UN);
+				fclose($handle);
+				return $return;
+			} catch(\Exception $e) {
+				unset($this->locks[$lock]);
+				flock($handle, LOCK_UN);
+				fclose($handle);
+				throw $e;
+			}
+		} else {
+			throw new \Exception('Unable to synchronize over '.$lock);
+		}
+	}
+	
+	/**
+	 * Set of acquired locks
+	 */
+	protected $locks = array();
+	
+	// IO
 
 	/**
 	 * Put file contents
@@ -350,11 +367,11 @@ class Database {
 		if(is_array($events))
 			return $events;
 		
-		return preg_split('(\s*,\s*)', $events);
+		return preg_split('([\s,]+)', $events);
 	}
 	
 	/**
-	 * Map of trigger handlers
+	 * Map of event handlers
 	 */
 	protected $handlers = array();
 }

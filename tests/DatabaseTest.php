@@ -16,18 +16,25 @@ class DatabaseTest extends PHPUnit_Framework_TestCase {
 		
 		// create index
 		self::$guidIndex = new \MicroDB\Index(self::$db, 'guid', 'guid');
+		
+		// random delay for concurrent testing
+		usleep(rand(0, 1000000));
 	}
 	
 	static function tearDownAfterClass() {
-		sleep(1); // delay, for parallel testing
+		// delay for concurrent testing
+		sleep(1);
 		
 		// remove all data files
-		$files = array_slice(scandir('tests/data'), 2);
-		foreach($files as $file) {
-			@unlink('tests/data/'.$file);
+		$files = @scandir('tests/data');
+		if($files) {
+			$files = array_slice($files, 2);
+			foreach($files as $file) {
+				@unlink('tests/data/'.$file);
+			}
+			
+			@rmdir('tests/data');
 		}
-		
-		@rmdir('tests/data');
 	}
 	
 	static function guid() {
@@ -124,19 +131,16 @@ class DatabaseTest extends PHPUnit_Framework_TestCase {
 	function testEvents() {
 		$a = array();
 		
-		$f = function($event) use (&$a) {
-			return function($id, $data = null) use ($event, &$a) {
-				if($id === 'events')
-					$a[] = $event;
-			};
+		$f = function($id, $data, $event = null) use (&$a) {
+			if(!isset($event))
+				$event = $data;
+			$a[] = $event;
 		};
 		
-		self::$db->on('beforeSave', $f('beforeSave'));
-		self::$db->on('saved', $f('saved'));
-		self::$db->on('beforeLoad', $f('beforeLoad'));
-		self::$db->on('loaded', $f('loaded'));
-		self::$db->on('beforeDelete', $f('beforeDelete'));
-		self::$db->on('deleted', $f('deleted'));
+		self::$db->on('beforeSave', $f);
+		self::$db->on('saved', $f);
+		self::$db->on(array('beforeLoad', 'loaded'), $f);
+		self::$db->on('beforeDelete deleted', $f);
 		
 		self::$db->save('events', array('foo' => 'bar'));
 		self::$db->load('events');
@@ -166,12 +170,21 @@ class DatabaseTest extends PHPUnit_Framework_TestCase {
 				$a[] = 'locked';
 			}
 			
-			// this fails on windows 8
-			// whereas LOCK_NB appears to be supported, at least by windows 8
-			$this->assertEquals(1, $wouldblock);
+			
+			if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+				// this fails on windows 8
+				// whereas LOCK_NB appears to be supported, at least by windows 8
+				// $this->assertEquals(1, $wouldblock);
+			} else {
+				$this->assertEquals(1, $wouldblock);
+			}
+			
+			self::$db->synchronized('sync', function() use (&$a) {
+				$a[] = 'nested';
+			});
 		});
 		
-		$ex = array('called', 'locked');
+		$ex = array('called', 'locked', 'nested');
 		$this->assertEquals($ex, $a);
 	}
 }
