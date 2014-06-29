@@ -51,29 +51,34 @@
 			<p>The following code demonstrates all basic operations on a MicroDB database.</p>
 <pre><code>&lt?php
 
-// create database in direcotry "data"
-$db = new \MicroDB\Database('data');
+$db = new \MicroDB\Database('data'); // data directory
 
-// save an item
-$db->save('user1', array(
-	'id' => 1,
-	'type' => 'user',
-	'name' => 'Foo Bar',
-	'email' => 'foo@bar.de',
-	'age' => 42
+// create an item
+// id is an auto incrementing integer
+$id = $db->create(array(
+	'type' => 'post',
+	'title' => 'Lorem ipsum',
+	'body' => 'At vero eos et accusam et justo duo dolores et ea rebum.'
 ));
 
 // load an item
-$user = $db->load('user1');
+$post = $db->load($id);
 
-// find an item
-$foo = $db->first(array('email' => 'foo@bar.de'));
+// save an item
+$post['tags'] = array('lorem', 'ipsum');
+$db->save($id, $post);
 
-// find items with callback
-$adults = $db->find(function($data) { return @$data['age'] &gt;= 21; });
+// find items
+$posts = $db->find(function($post) {
+	return is_array(@$post['tags']) && in_array('ipsum', @$post['tags']);
+});
+
+foreach($posts as $id => $post) {
+	print_r($post);
+}
 
 // delete an item
-$db->delete('user1');</code></pre>
+$db->delete($id);</code></pre>
 		</section>
 		
 		<section id="indices" class="guide">
@@ -127,6 +132,10 @@ loaded ($id, $data)
 beforeDelete ($id)
 deleted ($id)</pre>
 
+<div class="alert alert-info">Note that IDs starting with an underscore
+are not getting any of these events because they are considered
+hidden, e.g. index data files.</div>
+
 <p>For example, the following code prevents modifications on user
 objects unless you are an admin:</p>
 				
@@ -159,8 +168,6 @@ $db->off($handler);
 // unbind all handlers of an event
 $db->off('hello');</code></pre>
 		
-		
-		
 		</section>
 		
 		<section id="tests" class="guide">
@@ -168,6 +175,9 @@ $db->off('hello');</code></pre>
 			<p>Before running the tests you must run <code>composer update</code> in the microdb
 directory. This will install development dependencies like PHPUnit. Then, you can run
 the tests with <code>vendor/bin/phpunit tests</code>.</p>
+
+			<p>To test the concurrent behavior you can run the tests twice in parallel:
+ <code>vendor/bin/phpunit tests &amp; vendor/bin/phpunit tests</code></p>
 				
 		</section>
 		

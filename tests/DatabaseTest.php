@@ -5,138 +5,120 @@ require_once 'vendor/autoload.php';
 class DatabaseTest extends PHPUnit_Framework_TestCase {
 	
 	private static $db;
-	private static $typeIndex;
-	private static $titleIndex;
-	private static $tagsIndex;
+	private static $guidIndex;
+	private static $nameIndex;
 	
-	static function create() {
+	static function setUpBeforeClass() {
+		@mkdir('tests/data', 0644); // DON'T put this in create
+		
 		// create db
 		self::$db = new \MicroDB\Database('tests/data');
 		
-		// create indices
-		self::$typeIndex = new \MicroDB\Index(self::$db, 'index_type', 'type');
-		
-		self::$titleIndex = new \MicroDB\Index(self::$db, 'index_title', 'title');
-		
-		self::$tagsIndex = new \MicroDB\Index(
-			self::$db,
-			'index_tags',
-			function($data) {
-				if(@$data['type'] === 'post')
-					return $data['tags'];
-			}
-		);
-		
-		// some tags
-		$tags = array(
-			'news' => 1,
-			'weather' => 1,
-			'programming' => 1,
-			'php' => 1,
-			'javascript' => 1,
-			'microdb' => 1
-		);
-	
-		// create users
-		for($i = 1; $i <= 4; ++$i) {
-			self::$db->save('user'.$i, array(
-				'id' => $i,
-				'name' => 'User '.$i,
-				'type' => 'user'
-			));
-		}
-		
-		// create posts
-		for($i = 1; $i <= 12; ++$i) {
-			self::$db->save('post'.$i, array(
-				'id' => $i,
-				'title' => 'Lorem ipsum ' . ($i % 4),
-				'tags' => array_rand($tags, rand(2, count($tags) - 1)),
-				'type' => 'post',
-				'author' => 'user'.rand(1, 3)
-			));
-		}
-	}
-	
-	static function destroy() {
-		// remove all data files
-		$files = array_slice(scandir('tests/data'), 2);
-		foreach($files as $file) {
-			unlink('tests/data/'.$file);
-		}
-	}
-	
-	static function reset() {
-		self::destroy();
-		self::create();
-	}
-	
-	static function setUpBeforeClass() {
-		mkdir('tests/data', 0644); // DON'T put this in create
-		self::create();
+		// create index
+		self::$guidIndex = new \MicroDB\Index(self::$db, 'guid', 'guid');
 	}
 	
 	static function tearDownAfterClass() {
-		self::destroy();
-		rmdir('tests/data'); // DON'T put this in destroy
+		sleep(1); // delay, for parallel testing
+		
+		// remove all data files
+		$files = array_slice(scandir('tests/data'), 2);
+		foreach($files as $file) {
+			@unlink('tests/data/'.$file);
+		}
+		
+		@rmdir('tests/data');
 	}
 	
-	function testLoad() {
-		$t = self::$db->load('user1');
-		$this->assertEquals('user', $t['type']);
-    }
-    
-    function testFind() {
-		$users = self::$db->find(array('type' => 'user'));
-		$this->assertEquals(4, count($users));
+	static function guid() {
+		return sprintf( '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+			mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ),
+			mt_rand( 0, 0xffff ),
+			mt_rand( 0, 0x0fff ) | 0x4000,
+			mt_rand( 0, 0x3fff ) | 0x8000,
+			mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff ), mt_rand( 0, 0xffff )
+		);
+	}
+	
+	function testCreate() {
+		self::$db->create();
+	}
+	
+	function testBasics() {
+		$g = self::guid();
+		$t1 = array('guid' => $g, 'name' => 'foo');
+		$t2 = array('guid' => $g, 'name' => 'bar');
+
+		$id1 = self::$db->create();
+		self::$db->save($id1, $t1);
+		
+		$id2 = self::$db->create($t2);
+		
+		$this->assertEquals($t1, self::$db->load($id1));
+		$this->assertEquals($t2, self::$db->load($id2));
+	}
+	
+	function testFind() {
+		$g = self::guid();
+		$t1 = array('guid' => $g, 'name' => 'foo');
+		$t2 = array('guid' => $g, 'name' => 'bar');
+
+		$id1 = self::$db->create($t1);
+		$id2 = self::$db->create($t2);
+		
+		$a = self::$db->find(array('guid' => $g));
+		$ex = array($id1 => $t1, $id2 => $t2);
+		$this->assertEquals($ex, $a);
 	}
 	
 	function testDelete() {
-		self::$db->delete('post2');
-		$post = self::$db->load('post2');
-		
-		$this->assertEquals(null, $post);
-		
-		self::reset();
+		$g = self::guid();
+		$id = self::$db->create(array('guid' => $g));
+		self::$db->delete($id);
+		$this->assertEquals(null, self::$db->load($id));
 	}
 	
 	function testIndex() {
-		$a = self::$typeIndex->find('post');
-		$b = self::$typeIndex->find('user');
-		$c = self::$typeIndex->find('foo');
+		$g1 = self::guid();
+		$g2 = self::guid();
 		
-		$this->assertEquals(12, count($a));
-		$this->assertEquals(4, count($b));
-		$this->assertTrue(is_array($c));
-	}
-	
-	function testIndex2() {
-		$a = self::$titleIndex->find(function($title) {
-			return substr($title, -1) === '0';
-		});
+		self::$db->create(array('guid' => $g1));
+		self::$db->create(array('guid' => array($g1)));
+		self::$db->create(array('guid' => $g2));
+		self::$db->create(array('guid' => array($g2)));
+		self::$db->create(array('guid' => array($g1, $g2)));
 		
-		$this->assertEquals(3, count($a));
+		$this->assertEquals(3, count(self::$guidIndex->find($g2)));
 	}
 	
 	function testIndexSlice() {
-		$a = self::$titleIndex->slice(3, 3);
+		$g = self::guid();
 		
-		$ex = array('post3', 'post7', 'post11');
+		$tempIndex = new \MicroDB\Index(self::$db, $g, 'name');
+		
+		$id1 = self::$db->create(array('name' => 'foo'));
+		$id2 = self::$db->create(array('name' => 'bar'));
+		$id3 = self::$db->create(array('name' => 'baz'));
+		
+		$a = $tempIndex->loadSlice(1, 2);
+		$ex = array(
+			$id3 => array('name' => 'baz'),
+			$id1 => array('name' => 'foo')
+		);
 		$this->assertEquals($ex, $a);
 	}
 	
 	function testDeleteIndex() {
-		self::$db->delete('post2');
-		$posts = self::$typeIndex->find('post');
+		$g = self::guid();
+		$id = self::$db->create(array('guid' => $g));
+		self::$db->delete($id);
+		$a = self::$guidIndex->find($g);
 		
-		$this->assertEquals(false, isset($posts['post2']));
-		
-		self::reset();
+		$this->assertTrue(empty($a));
 	}
 	
 	function testRepair() {
 		self::$db->repair();
-		$this->testIndex();
 	}
 	
 	function testEvents() {
@@ -171,11 +153,11 @@ class DatabaseTest extends PHPUnit_Framework_TestCase {
 			$a[] = 'called';
 			
 			self::$db->eachId(function($id) {
-				if($id == 'sync.lock')
+				if($id == '_sync_lock')
 					$a[] = 'each';
 			});
 			
-			$file = self::$db->getPath().'sync.lock';
+			$file = self::$db->getPath().'_sync_lock';
 			$handle = fopen($file, 'w+');
 			if ($handle && flock($handle, LOCK_EX|LOCK_NB, $wouldblock)) {
 				flock($handle, LOCK_UN);
@@ -185,7 +167,7 @@ class DatabaseTest extends PHPUnit_Framework_TestCase {
 			}
 			
 			// this fails on windows 8
-			// whereas LOCK_NB is supported, at least by windows 8
+			// whereas LOCK_NB appears to be supported, at least by windows 8
 			$this->assertEquals(1, $wouldblock);
 		});
 		

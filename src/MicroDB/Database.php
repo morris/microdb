@@ -16,22 +16,42 @@ class Database {
 			$path .= '/';
 		$this->path = $path;
 	}
+	
+	/**
+	 * Create an item with auto incrementing id
+	 */
+	function create($data = array()) {
+		$self = $this;
+		return $this->synchronized('__auto', function() use ($self, $data) {
+			$next = 1;
+			if($self->exists('_auto'))
+				$next = $self->load('_auto', 'next');
+			
+			$self->save('_auto', array('next' => $next+1));
+			$self->save($next, $data);
+			
+			return $next;
+		});
+	}
 
 	/**
 	 * Save data to database
 	 */
 	function save($id, $data) {
-		$this->trigger('beforeSave', $id, $data);
-		
-		$this->put($this->path.$id, json_encode($data));
-		
-		$this->trigger('saved', $id, $data);
+		$self = $this;
+		return $this->synchronized($id, function() use ($self, $id, $data) {
+			$self->triggerId('beforeSave', $id, $data);
+			
+			$self->put($this->path.$id, json_encode($data));
+			
+			$self->triggerId('saved', $id, $data);
+		});
 	}
 	
 	/**
 	 * Load data from database
 	 */
-	function load($id) {
+	function load($id, $key = null) {
 		if(is_array($id)) {
 			$results = array();
 			foreach($id as $i) {
@@ -40,12 +60,14 @@ class Database {
 			return $results;
 		}
 		
-		$this->trigger('beforeLoad', $id);
+		$this->triggerId('beforeLoad', $id);
 		
 		$data = json_decode($this->get($this->path.$id), true);
 			
-		$this->trigger('loaded', $id, $data);
+		$this->triggerId('loaded', $id, $data);
 		
+		if(isset($key))
+			return @$data[$key];
 		return $data;
 	}
 	
@@ -61,13 +83,14 @@ class Database {
 			return $results;
 		}
 		
-		$this->trigger('beforeDelete', $id);
-		
-		$return = $this->erase($this->path.$id);
-		
-		$this->trigger('deleted', $id, $return);
-		
-		return $return;
+		$self = $this;
+		return $this->synchronized($id, function() use ($self, $id) {
+			$self->triggerId('beforeDelete', $id);
+			
+			$self->erase($this->path.$id);
+			
+			$self->triggerId('deleted', $id);
+		});
 	}
 	
 	/**
@@ -109,8 +132,15 @@ class Database {
 	/**
 	 * Find first item key-value map or callback
 	 */
-	function first($where) {
+	function first($where = null) {
 		return $this->find($where, true);
+	}
+	
+	/**
+	 * Checks wether an id exists
+	 */
+	function exists($id) {
+		return is_file($this->path.$id);
 	}
 	
 	/**
@@ -125,11 +155,11 @@ class Database {
 	/**
 	 * Call a function for each id in the database
 	 */
-	function eachId($func) {
+	function eachId($func) {		
 		$res = opendir($this->path);
 
 		while(($id = readdir($res)) !== false) {
-			if($id == "." || $id == ".." || preg_match('/\.lock$/', $id))
+			if($id == "." || $id == ".." || $id{0} == '_')
 				continue;
 
 			$func($id);
@@ -140,7 +170,7 @@ class Database {
 	 * Call a function in a mutually exclusive way, locking on a file
 	 */
 	function synchronized($lock, $func) {
-		$file = $this->path.$lock.'.lock';
+		$file = $this->path . '_' . $lock . '_lock';
 		touch($file);
 		chmod($file, $this->mode);
 		
@@ -160,6 +190,23 @@ class Database {
 		} else {
 			throw new \Exception('Unable to synchronize over '.$lock);
 		}
+	}
+	
+	/**
+	 * Trigger an event only if id is not hidden
+	 */
+	function triggerId($event, $id, $args = null) {
+		if(!$this->hidden($id))
+			call_user_func_array(array($this, 'trigger'), func_get_args());
+		return $this;
+	}
+	
+	/**
+	 * Is this id hidden, i.e. no events should be triggered?
+	 * Hidden ids start with an underscore
+	 */
+	function hidden($id) {
+		return $id{0} == '_';
 	}
 
 	/**

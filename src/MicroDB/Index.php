@@ -4,7 +4,7 @@ namespace MicroDB;
 
 /**
  * Represents and manages an index on a database.
- * An index maps keys to ids where keys are computed from the item.
+ * An index maps keys to ids where keys are computed from items.
  */
 class Index {
 
@@ -94,10 +94,9 @@ class Index {
 	
 	/**
 	 * Update item in index
+	 * Synchronized
 	 */
-	function update($id, $data) {
-		if(@$data['type'] === 'index') return;
-		
+	function update($id, $data) {		
 		$self = $this;
 		$this->apply(function() use ($self, $id, $data) {
 			if($self->updateTemp($id, $data))
@@ -145,8 +144,9 @@ class Index {
 	
 	/**
 	 * Delete item from index
+	 * Synchronized
 	 */
-	function delete($id) {		
+	function delete($id) {
 		$self = $this;
 		$this->apply(function() use ($self, $id) {
 			$store = false;
@@ -188,7 +188,7 @@ class Index {
 	 */
 	function apply($func) {
 		$self = $this;
-		$this->db->synchronized($this->name, function() use ($self, $func) {
+		$this->db->synchronized($this->name . '_index', function() use ($self, $func) {
 			$self->restore();
 			$func();
 		});
@@ -198,7 +198,7 @@ class Index {
 	 * Load index
 	 */
 	function restore() {
-		$index = $this->db->load($this->name);
+		$index = $this->db->load('_' . $this->name . '_index');
 		
 		$this->map = @$index['map'];
 		$this->inverse = @$index['inverse'];
@@ -217,7 +217,7 @@ class Index {
 	function store() {
 		$this->sort(); // keep map sorted by key
 		
-		$this->db->save($this->name, array(
+		$this->db->save('_' . $this->name . '_index', array(
 			'name' => $this->name,
 			'type' => 'index',
 			'map' => $this->map,
@@ -257,5 +257,4 @@ class Index {
 	protected $compare;
 	protected $map;
 	protected $inverse;
-	protected $rebuilding = false;
 }
