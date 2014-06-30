@@ -6,7 +6,6 @@ class DatabaseTest extends PHPUnit_Framework_TestCase {
 	
 	private static $db;
 	private static $guidIndex;
-	private static $nameIndex;
 	
 	static function setUpBeforeClass() {
 		@mkdir('tests/data', 0644); // DON'T put this in create

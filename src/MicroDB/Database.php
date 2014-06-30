@@ -337,7 +337,7 @@ class Database {
 	
 	/**
 	 * Trigger one or more events with given arguments
-	 * @param string|array Event keys, comma separated
+	 * @param string|array Event keys, whitespace/comma separated
 	 * @param mixed Optional arguments
 	 */
 	function trigger($event, $args = null) {
@@ -361,7 +361,7 @@ class Database {
 	}
 	
 	/**
-	 * Split event keys by comma
+	 * Split event keys by whitespace and/or comma
 	 */
 	protected function splitEvents($events) {
 		if(is_array($events))
