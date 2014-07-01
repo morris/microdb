@@ -186,4 +186,25 @@ class DatabaseTest extends PHPUnit_Framework_TestCase {
 		$ex = array('called', 'locked', 'nested');
 		$this->assertEquals($ex, $a);
 	}
+	
+	function testCache() {
+		$a = array();
+		
+		$f = function($id, $data, $event = null) use (&$a) {
+			if(!isset($event))
+				$event = $data;
+			$a[] = $event;
+		};
+		
+		self::$db->on('loaded', $f);
+		
+		$cache = new \MicroDB\Cache(self::$db);
+		
+		self::$db->save('cached', array('foo' => 'bar'));
+		$a[] = $cache->load('cached');
+		$a[] = $cache->load('cached');
+		
+		$ex = array('loaded', array('foo' => 'bar'), array('foo' => 'bar'));
+		$this->assertEquals($ex, $a);
+	}
 }
