@@ -10,11 +10,14 @@ class Database {
 	/**
 	 * Constructor
 	 */
-	function __construct($path) {
+	function __construct($path, $mode = 0644) {
 		$path = (string) $path;
 		if (substr($path, -1) != '/')
 			$path .= '/';
 		$this->path = $path;
+		$this->mode = $mode;
+		
+		@mkdir($this->path, $this->mode, true);
 	}
 	
 	/**
@@ -225,7 +228,7 @@ class Database {
 			// release
 			foreach($locks as $lock) {
 				unset($this->locks[$lock]);
-				if($handles[$lock]) {
+				if(isset($handles[$lock])) {
 					flock($handles[$lock], LOCK_UN);
 					fclose($handles[$lock]);
 				}
@@ -235,7 +238,7 @@ class Database {
 			// release
 			foreach($locks as $lock) {
 				unset($this->locks[$lock]);
-				if($handles[$lock]) {
+				if(isset($handles[$lock])) {
 					flock($handles[$lock], LOCK_UN);
 					fclose($handles[$lock]);
 				}
@@ -299,7 +302,7 @@ class Database {
 	/**
 	 * Mode for created files
 	 */
-	public $mode = 0644;
+	public $mode;
 	
 	// EVENTS
 	
