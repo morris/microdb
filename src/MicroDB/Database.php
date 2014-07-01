@@ -63,7 +63,7 @@ class Database {
 		$this->triggerId('beforeLoad', $id);
 		
 		$data = json_decode($this->get($this->path.$id), true);
-			
+		
 		$this->triggerId('loaded', $id, $data);
 		
 		if(isset($key))
@@ -186,36 +186,62 @@ class Database {
 	// SYNCHRONIZATION
 	
 	/**
-	 * Call a function in a mutually exclusive way, locking on a file
+	 * Call a function in a mutually exclusive way, locking on files
 	 * A process will only block other processes and never block itself,
 	 * so you can safely nest synchronized operations.
 	 */
-	function synchronized($lock, $func) {
-		// if already locked by this process, just call function
-		if(isset($this->locks[$lock])) {
-			return $func();
+	function synchronized($locks, $func) {
+		if(!is_array($locks))
+			$locks = array($locks);
+			
+		// remove already acquired locks
+		$acquire = array();
+		foreach($locks as $lock) {
+			if(!isset($this->locks[$lock]))
+				$acquire[] = $lock;
 		}
+		$locks = $acquire;
 		
-		// otherwise, acquire lock
-		$file = $this->path . '_' . $lock . '_lock';
-		$handle = fopen($file, 'w');
-
-		if($handle && flock($handle, LOCK_EX)) {
-			$this->locks[$lock] = true;
-			try {
-				$return = $func();
-				unset($this->locks[$lock]);
-				flock($handle, LOCK_UN);
-				fclose($handle);
-				return $return;
-			} catch(\Exception $e) {
-				unset($this->locks[$lock]);
-				flock($handle, LOCK_UN);
-				fclose($handle);
-				throw $e;
+		sort($locks);
+		
+		$handles = array();
+		
+		try {
+			// acquire each lock
+			foreach($locks as $lock) {
+				$file = $this->path . '_' . $lock . '_lock';
+				$handle = fopen($file, 'w');
+				
+				if($handle && flock($handle, LOCK_EX)) {
+					$this->locks[$lock] = true;
+					$handles[$lock] = $handle;
+				} else {
+					throw new \Exception('Unable to synchronize over '.$lock);
+				}
 			}
-		} else {
-			throw new \Exception('Unable to synchronize over '.$lock);
+
+			$return = $func();
+			
+			// release
+			foreach($locks as $lock) {
+				unset($this->locks[$lock]);
+				if($handles[$lock]) {
+					flock($handles[$lock], LOCK_UN);
+					fclose($handles[$lock]);
+				}
+			}
+			return $return;
+		} catch(\Exception $e) {
+			// release
+			foreach($locks as $lock) {
+				unset($this->locks[$lock]);
+				if($handles[$lock]) {
+					flock($handles[$lock], LOCK_UN);
+					fclose($handles[$lock]);
+				}
+			}
+			
+			throw $e;
 		}
 	}
 	
