@@ -30,7 +30,7 @@ class Index {
 	function find($where, $first = false) {
 		if(empty($this->map)) $this->restore();
 		
-		if(is_callable($where)) {
+		if(!is_string($where) && is_callable($where)) {
 			$ids = array();
 			foreach($this->map as $k => $i) {
 				if($where($k)) {
@@ -230,7 +230,7 @@ class Index {
 	 */
 	function keys($data) {
 		$keys = $this->keyFunc;
-		if(is_callable($keys))
+		if(!is_string($keys) && is_callable($keys))
 			return $keys($data);
 		return @$data[$keys];
 	}

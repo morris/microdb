@@ -102,7 +102,7 @@ class Database {
 	function find($where = array(), $first = false) {
 		$results = array();
 		
-		if(is_callable($where)) {
+		if(!is_string($where) && is_callable($where)) {
 			$this->eachId(function($id) use (&$results, $where, $first) {
 				$data = $this->load($id);
 				if($where($data)) {
@@ -344,7 +344,7 @@ class Database {
 	 * @param callable Handler
 	 */
 	function off($event, $handler = null) {
-		if(is_callable($event)) {
+		if(!is_string($event) && is_callable($event)) {
 			$handler = $event;
 			$event = array_keys($this->handlers);
 		}
