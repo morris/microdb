@@ -3,7 +3,7 @@
 MicroDB is a minimalistic file-based JSON object database written in
 PHP.
 
-[http://microdb.morrisbrodersen.de]
+http://microdb.morrisbrodersen.de
 
 
 ## Features
