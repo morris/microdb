@@ -172,7 +172,7 @@ class Database {
 	/**
 	 * Trigger an event only if id is not hidden
 	 */
-	function triggerId($event, $id, $args = null) {
+	protected function triggerId($event, $id, $args = null) {
 		if(!$this->hidden($id))
 			call_user_func_array(array($this, 'trigger'), func_get_args());
 		return $this;
@@ -290,7 +290,7 @@ class Database {
 	/**
 	 * Get data path
 	 */
-	public function getPath() {
+	function getPath() {
 		return $this->path;
 	}
 	
@@ -302,7 +302,7 @@ class Database {
 	/**
 	 * Mode for created files
 	 */
-	public $mode;
+	protected $mode;
 	
 	// EVENTS
 	
