@@ -96,8 +96,11 @@ class Index {
 	 * Update item in index
 	 * Synchronized
 	 */
-	function update($id, $data) {		
+	function update($event) {
 		$self = $this;
+		$id = $event->id;
+		$data = $event->data;
+		
 		$this->apply(function() use ($self, $id, $data) {
 			if($self->updateTemp($id, $data))
 				$self->store();
@@ -146,8 +149,10 @@ class Index {
 	 * Delete item from index
 	 * Synchronized
 	 */
-	function delete($id) {
+	function delete($event) {
 		$self = $this;
+		$id = $event->id;
+		
 		$this->apply(function() use ($self, $id) {
 			$store = false;
 			$oldKeys = @$self->inverse[$id];

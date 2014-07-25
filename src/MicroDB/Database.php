@@ -42,12 +42,13 @@ class Database {
 	 */
 	function save($id, $data) {
 		$self = $this;
-		return $this->synchronized($id, function() use ($self, $id, $data) {
-			$self->triggerId('beforeSave', $id, $data);
+		$event = new Event($this, $id, $data);
+		return $this->synchronized($id, function() use ($self, $event) {
+			$self->triggerId('beforeSave', $event);
 			
-			$self->put($this->path.$id, json_encode($data));
+			$self->put($this->path . $event->id, json_encode($event->data));
 			
-			$self->triggerId('saved', $id, $data);
+			$self->triggerId('saved', $event);
 		});
 	}
 	
@@ -66,15 +67,17 @@ class Database {
 		if(!$this->validId($id))
 			return null;
 		
-		$this->triggerId('beforeLoad', $id);
+		$event = new Event($this, $id);
 		
-		$data = json_decode($this->get($this->path.$id), true);
+		$this->triggerId('beforeLoad', $event);
 		
-		$this->triggerId('loaded', $id, $data);
+		$event->data = json_decode($this->get($this->path . $event->id), true);
+		
+		$this->triggerId('loaded', $event);
 		
 		if(isset($key))
-			return @$data[$key];
-		return $data;
+			return @$event->data[$key];
+		return $event->data;
 	}
 	
 	/**
@@ -90,12 +93,13 @@ class Database {
 		}
 		
 		$self = $this;
-		return $this->synchronized($id, function() use ($self, $id) {
-			$self->triggerId('beforeDelete', $id);
+		$event = new Event($this, $id);
+		return $this->synchronized($id, function() use ($self, $event) {
+			$self->triggerId('beforeDelete', $event);
 			
-			$self->erase($this->path.$id);
+			$self->erase($this->path . $event->id);
 			
-			$self->triggerId('deleted', $id);
+			$self->triggerId('deleted', $event);
 		});
 	}
 	
@@ -175,8 +179,8 @@ class Database {
 	/**
 	 * Trigger an event only if id is not hidden
 	 */
-	protected function triggerId($event, $id, $args = null) {
-		if(!$this->hidden($id))
+	protected function triggerId($type, $event) {
+		if(is_object($event) && !$this->hidden($event->id))
 			call_user_func_array(array($this, 'trigger'), func_get_args());
 		return $this;
 	}
@@ -385,14 +389,10 @@ class Database {
 		array_shift($args);
 		$args[] = $event;
 
-		$events = $this->splitEvents($event);
-
-		foreach ($events as $event) {
-			if (isset($this->handlers[$event])) {
-				foreach ($this->handlers[$event] as $priority => $handlers) {
-					foreach ($handlers as $handler) {
-						call_user_func_array($handler, $args);
-					}
+		if (isset($this->handlers[$event])) {
+			foreach ($this->handlers[$event] as $priority => $handlers) {
+				foreach ($handlers as $handler) {
+					call_user_func_array($handler, $args);
 				}
 			}
 		}
