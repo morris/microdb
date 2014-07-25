@@ -63,6 +63,9 @@ class Database {
 			return $results;
 		}
 		
+		if(!$this->validId($id))
+			return null;
+		
 		$this->triggerId('beforeLoad', $id);
 		
 		$data = json_decode($this->get($this->path.$id), true);
@@ -184,6 +187,14 @@ class Database {
 	 */
 	function hidden($id) {
 		return $id{0} == '_';
+	}
+	
+	/**
+	 * Check if id is valid
+	 */
+	function validId($id) {
+		$id = (string)$id;
+		return $id !== '.' && $id !== '..' && preg_match('#^[^/?*:;{}\\\\]+$#', $id);
 	}
 	
 	// SYNCHRONIZATION

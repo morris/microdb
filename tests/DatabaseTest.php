@@ -207,4 +207,14 @@ class DatabaseTest extends PHPUnit_Framework_TestCase {
 		$ex = array('loaded', array('foo' => 'bar'), array('foo' => 'bar'));
 		$this->assertEquals($ex, $a);
 	}
+	
+	function testValidId() {
+		$a = array();
+		$a[] = self::$db->load(null);
+		$a[] = self::$db->load('');
+		$a[] = self::$db->load(0);
+		
+		$ex = array(null, null, null);
+		$this->assertEquals($ex, $a);
+	}
 }

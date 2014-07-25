@@ -3,7 +3,7 @@
 	"description": "MicroDB is a minimalistic file-based JSON object database written in PHP.",
 	"keywords": ["database", "file", "json"],
 	"license": "MIT",
-	"homepage": "https://github.com/morris/microdb",
+	"homepage": "http://microdb.morrisbrodersen.de",
 	"authors": [
 		{
 			"name": "Morris Brodersen",
