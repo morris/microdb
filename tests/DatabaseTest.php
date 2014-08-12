@@ -227,7 +227,6 @@ class DatabaseTest extends PHPUnit_Framework_TestCase {
 
 		self::$db->save(100000, $t);
 		$id = self::$db->create();
-		var_dump($id);
 
 		$this->assertTrue((int)$id > 100000);
 	}

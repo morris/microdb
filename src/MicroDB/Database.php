@@ -217,48 +217,68 @@ class Database {
 	 * A process will only block other processes and never block itself,
 	 * so you can safely nest synchronized operations.
 	 */
-	function synchronized($locks, $func) {
-		if(!is_array($locks))
-			$locks = array($locks);
+	function synchronized( $locks, $func ) {
+
+		if(!is_array( $locks )) {
+			$locks = array( $locks );
+		}
 
 		// remove already acquired locks
 		$acquire = array();
-		foreach($locks as $lock) {
-			if(!isset($this->locks[$lock]))
+		foreach( $locks as $lock ) {
+
+			if( !isset( $this->locks[$lock] ) ) {
+
 				$acquire[] = $lock;
+
+			}
+
 		}
 		$locks = $acquire;
-
-		sort($locks);
 
 		$handles = array();
 
 		try {
+
 			// acquire each lock
 			foreach($locks as $lock) {
+
 				$file = $this->path . '_' . $lock . '_lock';
 				$handle = fopen($file, 'w');
 
 				if($handle && flock($handle, LOCK_EX)) {
+
 					$this->locks[$lock] = true;
 					$handles[$lock] = $handle;
+
 				} else {
+
 					throw new \Exception('Unable to synchronize over '.$lock);
+
 				}
+
 			}
 
 			$return = $func();
 
 			// release
 			foreach($locks as $lock) {
+
 				unset($this->locks[$lock]);
+
 				if(isset($handles[$lock])) {
+
 					flock($handles[$lock], LOCK_UN);
 					fclose($handles[$lock]);
+
 				}
+
 			}
+
 			return $return;
+
 		} catch(\Exception $e) {
+
 			// release
 			foreach($locks as $lock) {
 				unset($this->locks[$lock]);
@@ -270,6 +290,7 @@ class Database {
 
 			throw $e;
 		}
+
 	}
 
 	/**
