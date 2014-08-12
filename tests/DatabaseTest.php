@@ -220,4 +220,15 @@ class DatabaseTest extends PHPUnit_Framework_TestCase {
 		$ex = array(null, null, null);
 		$this->assertEquals($ex, $a);
 	}
+
+	function testNextSafe() {
+		$g = self::guid();
+		$t = array('name' => 'foo');
+
+		self::$db->save(100000, $t);
+		$id = self::$db->create();
+		var_dump($id);
+
+		$this->assertTrue((int)$id > 100000);
+	}
 }

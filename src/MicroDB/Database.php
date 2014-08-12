@@ -27,11 +27,11 @@ class Database {
 		$self = $this;
 		return $this->synchronized('_auto', function() use ($self, $data) {
 			$next = 1;
-			if($self->exists('_auto'))
-				$next = $self->load('_auto', 'next');
+			if( $self->exists('_auto') )
+				$next = $self->load( '_auto', 'next' );
 
-			$self->save('_auto', array('next' => $next+1));
-			$self->save($next, $data);
+			$self->save( '_auto', array('next' => $next + 1) );
+			$self->save( $next, $data );
 
 			return $next;
 		});
@@ -43,12 +43,16 @@ class Database {
 	function save($id, $data) {
 		$self = $this;
 		$event = new Event($this, $id, $data);
-		return $this->synchronized($id, function() use ($self, $event) {
+		return $this->synchronized(array('_auto', $id), function() use ($self, $event) {
 			$self->triggerId('beforeSave', $event);
 
 			$self->put($this->path . $event->id, json_encode($event->data));
 
 			$self->triggerId('saved', $event);
+
+			if ( preg_match('/^[1-9][0-9]*$/', (string)$event->id) ) {
+				$self->save('_auto', array('next' => ((int)$event->id) + 1));
+			}
 		});
 	}
 
