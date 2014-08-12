@@ -10,50 +10,65 @@ class Database {
 	/**
 	 * Constructor
 	 */
-	function __construct($path, $mode = 0644) {
+	function __construct( $path, $mode = 0644 ) {
+
 		$path = (string) $path;
-		if (substr($path, -1) != '/')
+
+		if ( substr($path, -1) != '/' ) {
 			$path .= '/';
+		}
+
 		$this->path = $path;
 		$this->mode = $mode;
 
-		@mkdir($this->path, $this->mode, true);
+		@mkdir( $this->path, $this->mode, true );
+
 	}
 
 	/**
 	 * Create an item with auto incrementing id
 	 */
 	function create($data = array()) {
+
 		$self = $this;
-		return $this->synchronized('_auto', function() use ($self, $data) {
+
+		return $this->synchronized( '_auto', function() use ($self, $data) {
+
 			$next = 1;
-			if( $self->exists('_auto') )
+
+			if ( $self->exists( '_auto' ) ) {
+
 				$next = $self->load( '_auto', 'next' );
+
+			}
 
 			$self->save( '_auto', array('next' => $next + 1) );
 			$self->save( $next, $data );
 
 			return $next;
+
 		});
+
 	}
 
 	/**
 	 * Save data to database
 	 */
 	function save($id, $data) {
+
 		$self = $this;
 		$event = new Event($this, $id, $data);
-		return $this->synchronized(array('_auto', $id), function() use ($self, $event) {
+
+		return $this->synchronized( $id, function() use ($self, $event) {
+
 			$self->triggerId('beforeSave', $event);
 
 			$self->put($this->path . $event->id, json_encode($event->data));
 
 			$self->triggerId('saved', $event);
 
-			if ( preg_match('/^[1-9][0-9]*$/', (string)$event->id) ) {
-				$self->save('_auto', array('next' => ((int)$event->id) + 1));
-			}
 		});
+
 	}
 
 	/**
@@ -236,6 +251,8 @@ class Database {
 		}
 		$locks = $acquire;
 
+		array_unique( $locks );
+
 		$handles = array();
 
 		try {
@@ -244,7 +261,7 @@ class Database {
 			foreach($locks as $lock) {
 
 				$file = $this->path . '_' . $lock . '_lock';
-				$handle = fopen($file, 'w');
+				$handle = fopen( $file, 'w' );
 
 				if($handle && flock($handle, LOCK_EX)) {
 
@@ -268,8 +285,8 @@ class Database {
 
 				if(isset($handles[$lock])) {
 
-					flock($handles[$lock], LOCK_UN);
-					fclose($handles[$lock]);
+					flock( $handles[$lock], LOCK_UN );
+					fclose( $handles[$lock] );
 
 				}
 
@@ -281,11 +298,16 @@ class Database {
 
 			// release
 			foreach($locks as $lock) {
+
 				unset($this->locks[$lock]);
+
 				if(isset($handles[$lock])) {
-					flock($handles[$lock], LOCK_UN);
-					fclose($handles[$lock]);
+
+					flock( $handles[$lock], LOCK_UN );
+					fclose( $handles[$lock] );
+
 				}
+
 			}
 
 			throw $e;
@@ -296,7 +318,7 @@ class Database {
 	/**
 	 * Set of acquired locks
 	 */
-	protected $locks = array();
+	public $locks = array();
 
 	// IO
 
