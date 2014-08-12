@@ -16,10 +16,10 @@ class Database {
 			$path .= '/';
 		$this->path = $path;
 		$this->mode = $mode;
-		
+
 		@mkdir($this->path, $this->mode, true);
 	}
-	
+
 	/**
 	 * Create an item with auto incrementing id
 	 */
@@ -29,10 +29,10 @@ class Database {
 			$next = 1;
 			if($self->exists('_auto'))
 				$next = $self->load('_auto', 'next');
-			
+
 			$self->save('_auto', array('next' => $next+1));
 			$self->save($next, $data);
-			
+
 			return $next;
 		});
 	}
@@ -45,13 +45,13 @@ class Database {
 		$event = new Event($this, $id, $data);
 		return $this->synchronized($id, function() use ($self, $event) {
 			$self->triggerId('beforeSave', $event);
-			
+
 			$self->put($this->path . $event->id, json_encode($event->data));
-			
+
 			$self->triggerId('saved', $event);
 		});
 	}
-	
+
 	/**
 	 * Load data from database
 	 */
@@ -63,23 +63,23 @@ class Database {
 			}
 			return $results;
 		}
-		
+
 		if(!$this->validId($id))
 			return null;
-		
+
 		$event = new Event($this, $id);
-		
+
 		$this->triggerId('beforeLoad', $event);
-		
+
 		$event->data = json_decode($this->get($this->path . $event->id), true);
-		
+
 		$this->triggerId('loaded', $event);
-		
+
 		if(isset($key))
 			return @$event->data[$key];
 		return $event->data;
 	}
-	
+
 	/**
 	 * Delete data from database
 	 */
@@ -91,30 +91,32 @@ class Database {
 			}
 			return $results;
 		}
-		
+
 		$self = $this;
 		$event = new Event($this, $id);
 		return $this->synchronized($id, function() use ($self, $event) {
 			$self->triggerId('beforeDelete', $event);
-			
+
 			$self->erase($this->path . $event->id);
-			
+
 			$self->triggerId('deleted', $event);
 		});
 	}
-	
+
 	/**
 	 * Find data matching key-value map or callback
 	 */
 	function find($where = array(), $first = false) {
 		$results = array();
-		
+
 		if(!is_string($where) && is_callable($where)) {
 			$this->eachId(function($id) use (&$results, $where, $first) {
 				$data = $this->load($id);
 				if($where($data)) {
-					if($first)
-						return $data;
+					if($first) {
+						$results = $data;
+						return true;
+					}
 					$results[$id] = $data;
 				}
 			});
@@ -129,30 +131,32 @@ class Database {
 					}
 				}
 				if($match) {
-					if($first)
-						return $data;
+					if($first) {
+						$results = $data;
+						return true;
+					}
 					$results[$id] = $data;
 				}
 			});
 		}
-		
+
 		return $results;
 	}
-	
+
 	/**
 	 * Find first item key-value map or callback
 	 */
 	function first($where = null) {
 		return $this->find($where, true);
 	}
-	
+
 	/**
 	 * Checks wether an id exists
 	 */
 	function exists($id) {
 		return is_file($this->path.$id);
 	}
-	
+
 	/**
 	 * Triggers "repair" event.
 	 * On this event, applications should repair inconsistencies in the
@@ -161,21 +165,22 @@ class Database {
 	function repair() {
 		$this->trigger('repair');
 	}
-	
+
 	/**
 	 * Call a function for each id in the database
 	 */
-	function eachId($func) {		
+	function eachId($func) {
 		$res = opendir($this->path);
 
 		while(($id = readdir($res)) !== false) {
 			if($id == "." || $id == ".." || $id{0} == '_')
 				continue;
 
-			$func($id);
+			if ( $func($id) )
+				return;
 		}
 	}
-	
+
 	/**
 	 * Trigger an event only if id is not hidden
 	 */
@@ -184,7 +189,7 @@ class Database {
 			call_user_func_array(array($this, 'trigger'), func_get_args());
 		return $this;
 	}
-	
+
 	/**
 	 * Is this id hidden, i.e. no events should be triggered?
 	 * Hidden ids start with an underscore
@@ -192,7 +197,7 @@ class Database {
 	function hidden($id) {
 		return $id{0} == '_';
 	}
-	
+
 	/**
 	 * Check if id is valid
 	 */
@@ -200,9 +205,9 @@ class Database {
 		$id = (string)$id;
 		return $id !== '.' && $id !== '..' && preg_match('#^[^/?*:;{}\\\\]+$#', $id);
 	}
-	
+
 	// SYNCHRONIZATION
-	
+
 	/**
 	 * Call a function in a mutually exclusive way, locking on files
 	 * A process will only block other processes and never block itself,
@@ -211,7 +216,7 @@ class Database {
 	function synchronized($locks, $func) {
 		if(!is_array($locks))
 			$locks = array($locks);
-			
+
 		// remove already acquired locks
 		$acquire = array();
 		foreach($locks as $lock) {
@@ -219,17 +224,17 @@ class Database {
 				$acquire[] = $lock;
 		}
 		$locks = $acquire;
-		
+
 		sort($locks);
-		
+
 		$handles = array();
-		
+
 		try {
 			// acquire each lock
 			foreach($locks as $lock) {
 				$file = $this->path . '_' . $lock . '_lock';
 				$handle = fopen($file, 'w');
-				
+
 				if($handle && flock($handle, LOCK_EX)) {
 					$this->locks[$lock] = true;
 					$handles[$lock] = $handle;
@@ -239,7 +244,7 @@ class Database {
 			}
 
 			$return = $func();
-			
+
 			// release
 			foreach($locks as $lock) {
 				unset($this->locks[$lock]);
@@ -258,16 +263,16 @@ class Database {
 					fclose($handles[$lock]);
 				}
 			}
-			
+
 			throw $e;
 		}
 	}
-	
+
 	/**
 	 * Set of acquired locks
 	 */
 	protected $locks = array();
-	
+
 	// IO
 
 	/**
@@ -280,7 +285,7 @@ class Database {
 			chmod($file, $this->mode);
 			return;
 		}
-	
+
 		file_put_contents($file, $data);
 		chmod($file, $this->mode);
 		return true;
@@ -294,33 +299,33 @@ class Database {
 			return null;
 		return file_get_contents($file);
 	}
-	
+
 	/**
 	 * Remove file from filesystem
 	 */
 	protected function erase($file) {
 		return unlink($file);
 	}
-	
+
 	/**
 	 * Get data path
 	 */
 	function getPath() {
 		return $this->path;
 	}
-	
+
 	/**
 	 * Directory where data files are stored
 	 */
 	protected $path;
-	
+
 	/**
 	 * Mode for created files
 	 */
 	protected $mode;
-	
+
 	// EVENTS
-	
+
 	/**
 	 * Bind a handler to an event, with given priority.
 	 * Higher priority handlers will be executed earlier.
@@ -353,7 +358,7 @@ class Database {
 		return $this;
 	}
 
-	/** 
+	/**
 	 * Unbind a handler on one, multiple or all events
 	 * @param string|array Event keys, comma separated
 	 * @param callable Handler
@@ -363,7 +368,7 @@ class Database {
 			$handler = $event;
 			$event = array_keys($this->handlers);
 		}
-		
+
 		$events = $this->splitEvents($event);
 
 		foreach ($events as $event) {
@@ -375,10 +380,10 @@ class Database {
 				}
 			}
 		}
-		
+
 		return $this;
 	}
-	
+
 	/**
 	 * Trigger one or more events with given arguments
 	 * @param string|array Event keys, whitespace/comma separated
@@ -396,20 +401,20 @@ class Database {
 				}
 			}
 		}
-		
+
 		return $this;
 	}
-	
+
 	/**
 	 * Split event keys by whitespace and/or comma
 	 */
 	protected function splitEvents($events) {
 		if(is_array($events))
 			return $events;
-		
+
 		return preg_split('([\s,]+)', $events);
 	}
-	
+
 	/**
 	 * Map of event handlers
 	 */
