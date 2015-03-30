@@ -34,7 +34,8 @@ class Database
 	 * @param $path
 	 * @param int $mode
 	 */
-	public function __construct( $path, $mode = 0775 ) {
+	public function __construct( $path, $mode = 0775 )
+	{
 
 		$path = (string) rtrim($path, '/') . '/';
 
@@ -50,7 +51,8 @@ class Database
 	 * @return
 	 * @throws Exception
 	 */
-	public function create(array $data = array()) {
+	public function create(array $data = array())
+	{
 
 		$self = $this;
 
@@ -80,7 +82,8 @@ class Database
 	 * @return
 	 * @throws Exception
 	 */
-	public function save($id, $data) {
+	public function save($id, $data)
+	{
 
 		$self = $this;
 		$event = new Event($this, $id, $data);
@@ -103,7 +106,8 @@ class Database
 	 * @param null $key
 	 * @return array|mixed|null
 	 */
-	public function load($id, $key = null) {
+	public function load($id, $key = null)
+	{
 		if(is_array($id)) {
 			$results = array();
 			foreach($id as $i) {
@@ -134,7 +138,8 @@ class Database
 	 * @return array
 	 * @throws Exception
 	 */
-	public function delete($id) {
+	public function delete($id)
+	{
 		if(is_array($id)) {
 			$results = array();
 			foreach($id as $i) {
@@ -161,7 +166,8 @@ class Database
 	 * @param bool $first
 	 * @return array
 	 */
-	public function find($where = array(), $first = false) {
+	public function find($where = array(), $first = false)
+	{
 		$results = array();
 
 		if(!is_string($where) && is_callable($where)) {
@@ -203,7 +209,8 @@ class Database
 	 * @param null $where
 	 * @return array
 	 */
-	public function first($where = null) {
+	public function first($where = null)
+	{
 		return $this->find($where, true);
 	}
 
@@ -212,7 +219,8 @@ class Database
 	 * @param $id
 	 * @return bool
 	 */
-	public function exists($id) {
+	public function exists($id)
+	{
 		return is_file($this->path.$id);
 	}
 
@@ -221,7 +229,8 @@ class Database
 	 * On this event, applications should repair inconsistencies in the
 	 * database, e.g. rebuild indices.
 	 */
-	public function repair() {
+	public function repair()
+	{
 		$this->trigger('repair');
 	}
 
@@ -229,7 +238,8 @@ class Database
 	 * Call a function for each id in the database
 	 * @param $func
 	 */
-	public function eachId($func) {
+	public function eachId($func)
+	{
 		$res = opendir($this->path);
 
 		while(($id = readdir($res)) !== false) {
@@ -247,7 +257,8 @@ class Database
 	 * @param $event
 	 * @return $this
 	 */
-	protected function triggerId($type, $event) {
+	protected function triggerId($type, $event)
+	{
 		if(is_object($event) && !$this->hidden($event->id))
 			call_user_func_array(array($this, 'trigger'), func_get_args());
 		return $this;
@@ -259,7 +270,8 @@ class Database
 	 * @param $id
 	 * @return bool
 	 */
-	public function hidden($id) {
+	public function hidden($id)
+	{
 		return $id{0} == '_';
 	}
 
@@ -268,7 +280,8 @@ class Database
 	 * @param $id
 	 * @return bool
 	 */
-	public function validId($id) {
+	public function validId($id)
+	{
 		$id = (string)$id;
 		return $id !== '.' && $id !== '..' && preg_match('#^[^/?*:;{}\\\\]+$#', $id);
 	}
@@ -284,7 +297,8 @@ class Database
 	 * @return
 	 * @throws Exception
 	 */
-	public function synchronized( $locks, $func ) {
+	public function synchronized( $locks, $func )
+	{
 
 		if(!is_array( $locks )) {
 			$locks = array( $locks );
@@ -346,7 +360,7 @@ class Database
 
 			return $return;
 
-		} catch(\Exception $e) {
+		} catch(Exception $e) {
 
 			// release
 			foreach($locks as $lock) {
@@ -374,7 +388,8 @@ class Database
 	 * @return bool|void
 	 * @internal param bool $mode
 	 */
-	protected function put($file, $data) {
+	protected function put($file, $data)
+	{
 		// don't overwrite if unchanged, just touch
 		if(is_file($file) && file_get_contents($file) === $data) {
 			touch($file);
@@ -392,7 +407,8 @@ class Database
 	 * @param $file
 	 * @return null|string
 	 */
-	protected function get($file) {
+	protected function get($file)
+	{
 		if(!is_file($file))
 			return null;
 		return file_get_contents($file);
@@ -403,7 +419,8 @@ class Database
 	 * @param $file
 	 * @return bool
 	 */
-	protected function erase($file) {
+	protected function erase($file)
+	{
 		return unlink($file);
 	}
 
@@ -411,7 +428,8 @@ class Database
 	 * Get data path
 	 * @return string
 	 */
-	public function getPath() {
+	public function getPath()
+	{
 		return $this->path;
 	}
 
@@ -426,7 +444,8 @@ class Database
 	 * @internal param Handler $callable
 	 * @internal param Priority $number of handler
 	 */
-	public function on($event, $handler, $priority = 0) {
+	public function on($event, $handler, $priority = 0)
+	{
 		$events = $this->splitEvents($event);
 
 		foreach ($events as $event) {
@@ -457,7 +476,8 @@ class Database
 	 * @param callable Handler
 	 * @return $this
 	 */
-	public function off($event, $handler = null) {
+	public function off($event, $handler = null)
+	{
 		if(!is_string($event) && is_callable($event)) {
 			$handler = $event;
 			$event = array_keys($this->handlers);
@@ -484,7 +504,8 @@ class Database
 	 * @param mixed
 	 * @return $this
 	 */
-	public function trigger($event, $args = null) {
+	public function trigger($event, $args = null)
+	{
 		$args = func_get_args();
 		array_shift($args);
 		$args[] = $event;
@@ -505,7 +526,8 @@ class Database
 	 * @param $events
 	 * @return array
 	 */
-	private function splitEvents($events) {
+	protected function splitEvents($events)
+	{
 		if(is_array($events)) {
 			return $events;
 		}
