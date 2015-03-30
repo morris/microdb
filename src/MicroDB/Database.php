@@ -170,7 +170,7 @@ class Database {
 	}
 
 	/**
-	 * Checks whether an id exists
+	 * Checks wether an id exists
 	 */
 	function exists($id) {
 		return is_file($this->path.$id);
