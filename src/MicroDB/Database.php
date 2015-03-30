@@ -9,8 +9,6 @@ class Database {
 
 	/**
 	 * Constructor
-	 * @param $path
-	 * @param int $mode
 	 */
 	function __construct( $path, $mode = 0644 ) {
 
@@ -29,9 +27,6 @@ class Database {
 
 	/**
 	 * Create an item with auto incrementing id
-	 * @param array $data
-	 * @return
-	 * @throws \Exception
 	 */
 	function create($data = array()) {
 
@@ -58,10 +53,6 @@ class Database {
 
 	/**
 	 * Save data to database
-	 * @param $id
-	 * @param $data
-	 * @return
-	 * @throws \Exception
 	 */
 	function save($id, $data) {
 
@@ -82,9 +73,6 @@ class Database {
 
 	/**
 	 * Load data from database
-	 * @param $id
-	 * @param null $key
-	 * @return array|mixed|null
 	 */
 	function load($id, $key = null) {
 		if(is_array($id)) {
@@ -113,9 +101,6 @@ class Database {
 
 	/**
 	 * Delete data from database
-	 * @param $id
-	 * @return array
-	 * @throws \Exception
 	 */
 	function delete($id) {
 		if(is_array($id)) {
@@ -139,9 +124,6 @@ class Database {
 
 	/**
 	 * Find data matching key-value map or callback
-	 * @param array $where
-	 * @param bool $first
-	 * @return array
 	 */
 	function find($where = array(), $first = false) {
 		$results = array();
@@ -182,8 +164,6 @@ class Database {
 
 	/**
 	 * Find first item key-value map or callback
-	 * @param null $where
-	 * @return array
 	 */
 	function first($where = null) {
 		return $this->find($where, true);
@@ -191,8 +171,6 @@ class Database {
 
 	/**
 	 * Checks wether an id exists
-	 * @param $id
-	 * @return bool
 	 */
 	function exists($id) {
 		return is_file($this->path.$id);
@@ -209,7 +187,6 @@ class Database {
 
 	/**
 	 * Call a function for each id in the database
-	 * @param $func
 	 */
 	function eachId($func) {
 		$res = opendir($this->path);
@@ -225,9 +202,6 @@ class Database {
 
 	/**
 	 * Trigger an event only if id is not hidden
-	 * @param $type
-	 * @param $event
-	 * @return $this
 	 */
 	protected function triggerId($type, $event) {
 		if(is_object($event) && !$this->hidden($event->id))
@@ -257,10 +231,6 @@ class Database {
 	 * Call a function in a mutually exclusive way, locking on files
 	 * A process will only block other processes and never block itself,
 	 * so you can safely nest synchronized operations.
-	 * @param $locks
-	 * @param $func
-	 * @return
-	 * @throws \Exception
 	 */
 	function synchronized( $locks, $func ) {
 
@@ -354,10 +324,6 @@ class Database {
 
 	/**
 	 * Put file contents
-	 * @param $file
-	 * @param $data
-	 * @param bool $mode
-	 * @return bool|void
 	 */
 	protected function put($file, $data, $mode = false) {
 		// don't overwrite if unchanged, just touch
@@ -374,8 +340,6 @@ class Database {
 
 	/**
 	 * Get file contents
-	 * @param $file
-	 * @return null|string
 	 */
 	protected function get($file) {
 		if(!is_file($file))
@@ -385,8 +349,6 @@ class Database {
 
 	/**
 	 * Remove file from filesystem
-	 * @param $file
-	 * @return bool
 	 */
 	protected function erase($file) {
 		return unlink($file);
@@ -394,7 +356,6 @@ class Database {
 
 	/**
 	 * Get data path
-	 * @return string
 	 */
 	function getPath() {
 		return $this->path;
@@ -418,7 +379,6 @@ class Database {
 	 * @param string|array Event keys
 	 * @param callable Handler
 	 * @param number Priority of handler
-	 * @return $this
 	 */
 	function on($event, $handler, $priority = 0) {
 		$events = $this->splitEvents($event);
@@ -449,7 +409,6 @@ class Database {
 	 * Unbind a handler on one, multiple or all events
 	 * @param string|array Event keys, comma separated
 	 * @param callable Handler
-	 * @return $this
 	 */
 	function off($event, $handler = null) {
 		if(!is_string($event) && is_callable($event)) {
@@ -476,7 +435,6 @@ class Database {
 	 * Trigger one or more events with given arguments
 	 * @param string|array Event keys, whitespace/comma separated
 	 * @param mixed Optional arguments
-	 * @return $this
 	 */
 	function trigger($event, $args = null) {
 		$args = func_get_args();
