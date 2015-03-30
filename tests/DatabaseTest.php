@@ -61,7 +61,7 @@ class DatabaseTest extends PHPUnit_Framework_TestCase
         self::$db->create();
     }
 
-    function testBasics()
+    public function testBasics()
     {
         $g = self::guid();
         $t1 = array('guid' => $g, 'name' => 'foo');
@@ -76,7 +76,7 @@ class DatabaseTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($t2, self::$db->load($id2));
     }
 
-    function testFind()
+    public function testFind()
     {
         $g = self::guid();
         $t1 = array('guid' => $g, 'name' => 'foo');
@@ -93,7 +93,7 @@ class DatabaseTest extends PHPUnit_Framework_TestCase
         $this->assertTrue(in_array($t1['name'], array('foo', 'bar')));
     }
 
-    function testDelete()
+    public function testDelete()
     {
 
         $g = self::guid();
@@ -103,7 +103,7 @@ class DatabaseTest extends PHPUnit_Framework_TestCase
 
     }
 
-    function testIndex()
+    public function testIndex()
     {
         $g1 = self::guid();
         $g2 = self::guid();
@@ -117,7 +117,7 @@ class DatabaseTest extends PHPUnit_Framework_TestCase
         $this->assertEquals(3, count(self::$guidIndex->find($g2)));
     }
 
-    function testIndexSlice()
+    public function testIndexSlice()
     {
         $g = self::guid();
 
@@ -135,7 +135,7 @@ class DatabaseTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($ex, $a);
     }
 
-    function testDeleteIndex()
+    public function testDeleteIndex()
     {
         $g = self::guid();
         $id = self::$db->create(array('guid' => $g));
@@ -145,12 +145,12 @@ class DatabaseTest extends PHPUnit_Framework_TestCase
         $this->assertTrue(empty($a));
     }
 
-    function testRepair()
+    public function testRepair()
     {
         self::$db->repair();
     }
 
-    function testEvents()
+    public function testEvents()
     {
         $a = array();
 
@@ -174,7 +174,7 @@ class DatabaseTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($ex, $a);
     }
 
-    function testSynchronized()
+    public function testSynchronized()
     {
         $a = array();
 
@@ -214,7 +214,7 @@ class DatabaseTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($ex, $a);
     }
 
-    function testCache()
+    public function testCache()
     {
         $a = array();
 
@@ -237,7 +237,7 @@ class DatabaseTest extends PHPUnit_Framework_TestCase
         $this->assertEquals($ex, $a);
     }
 
-    function testValidId()
+    public function testValidId()
     {
         $a = array();
         $a[] = self::$db->load(null);
