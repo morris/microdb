@@ -9,7 +9,14 @@ use MicroDB\Index;
  */
 class DatabaseTest extends PHPUnit_Framework_TestCase
 {
+    /**
+     * @var MicroDB\Database
+     */
     private static $db;
+
+    /**
+     * @var MicroDB\Index
+     */
     private static $guidIndex;
 
     public static function setUpBeforeClass()

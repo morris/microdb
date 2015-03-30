@@ -2,264 +2,371 @@
 
 namespace MicroDB;
 
+use Exception;
+
 /**
  * Represents and manages an index on a database.
  * An index maps keys to ids where keys are computed from items.
  */
-class Index {
+class Index
+{
+    /**
+     * @var Database
+     */
+    protected $db;
 
-	/**
-	 * Creates an index on a database with a name and an index key
-	 * function. The index listens to database events to update itself.
-	 */
-	function __construct($db, $name, $keyFunc, $compare = null) {
-		$this->db = $db;
-		$this->name = $name;
-		$this->keyFunc = $keyFunc;
-		$this->compare = $compare;
+    /**
+     * @var string
+     */
+    protected $name;
 
-		// register with database
-		$this->db->on('saved', array($this, 'update'));
-		$this->db->on('deleted', array($this, 'delete'));
-		$this->db->on('repair', array($this, 'rebuild'));
-	}
+    /**
+     * @var callable
+     */
+    protected $keyFunc;
 
-	/**
-	 * Find ids that match a key/callback
-	 */
-	function find($where, $first = false) {
-		if(empty($this->map)) $this->restore();
+    /**
+     * @var mixed
+     */
+    protected $compare;
 
-		if(!is_string($where) && is_callable($where)) {
-			$ids = array();
-			foreach($this->map as $k => $i) {
-				if($where($k)) {
-					if($first)
-						return $i;
-					$ids = array_merge($ids, $i);
-				}
-			}
-			return $ids;
-		}
+    /**
+     * @var mixed
+     */
+    protected $map;
 
-		if($first) {
-			if(isset($this->map[$where][0]))
-				return $this->map[$where][0];
-		} else {
-			if(isset($this->map[$where]))
-				return $this->map[$where];
-			return array();
-		}
-	}
+    /**
+     * @var mixed
+     */
+    protected $inverse;
 
-	/**
-	 * Get first matching id
-	 */
-	function first($where) {
-		return $this->find($where, true);
-	}
+    /**
+     * Creates an index on a database with a name and an index key
+     * function. The index listens to database events to update itself.
+     *
+     * @param $db
+     * @param $name
+     * @param $keyFunc
+     * @param null $compare
+     */
+    public function __construct($db, $name, $keyFunc, $compare = null)
+    {
+        $this->db       = $db;
+        $this->name     = $name;
+        $this->keyFunc  = $keyFunc;
+        $this->compare  = $compare;
 
-	/**
-	 * Get slice of mapping, useful for paging
-	 */
-	function slice($offset = 0, $length = null) {
-		if(empty($this->map)) $this->restore();
+        // register with database
+        $this->db->on('saved', array($this, 'update'));
+        $this->db->on('deleted', array($this, 'delete'));
+        $this->db->on('repair', array($this, 'rebuild'));
+    }
 
-		$slice = array_slice($this->map, $offset, $length);
-		return call_user_func_array('array_merge', $slice);
-	}
+    /**
+     * Find ids that match a key/callback
+     *
+     * @param $where
+     * @param bool $first
+     * @return array
+     */
+    public function find($where, $first = false)
+    {
+        if (empty($this->map)) {
+            $this->restore();
+        }
 
-	/**
-	 * Load items that match a key/callback
-	 */
-	function load($where, $first = false) {
-		$ids = $this->find($where, $first);
-		return $this->db->load($ids);
-	}
+        if (!is_string($where) && is_callable($where)) {
+            $this->$ids = array();
 
-	/**
-	 * Load first matching item
-	 */
-	function loadFirst($where) {
-		return $this->load($where, true);
-	}
+            foreach ($this->map as $k => $i) {
+                if ($where($k)) {
+                    if ($first) {
+                        return $i;
+                    }
+                    $ids = array_merge($ids, $i);
+                }
+            }
+            return $ids;
+        }
 
-	/**
-	 * Load slice of mapping
-	 */
-	function loadSlice($offset = 0, $length = null) {
-		$ids = $this->slice($offset, $length);
-		return $this->db->load($ids);
-	}
+        if ($first) {
+            if (isset($this->map[$where][0])) {
+                return $this->map[$where][0];
+            }
+        } else {
+            if (isset($this->map[$where])) {
+                return $this->map[$where];
+            }
+            return array();
+        }
+    }
 
-	/**
-	 * Update item in index
-	 * Synchronized
-	 */
-	function update($event) {
-		$self = $this;
-		$id = $event->id;
-		$data = $event->data;
+    /**
+     * Get first matching id
+     *
+     * @param $where
+     * @return array
+     */
+    public function first($where)
+    {
+        return $this->find($where, true);
+    }
 
-		$this->apply(function() use ($self, $id, $data) {
-			if($self->updateTemp($id, $data))
-				$self->store();
-		});
-	}
+    /**
+     * Get slice of mapping, useful for paging
+     *
+     * @param int $offset
+     * @param null $length
+     * @return mixed
+     */
+    public function slice($offset = 0, $length = null)
+    {
+        if (empty($this->map)) {
+            $this->restore();
+        }
 
-	protected function updateTemp($id, $data) {
-		// compute new keys
-		$keys = $this->keys($data);
+        $slice = array_slice($this->map, $offset, $length);
+        return call_user_func_array('array_merge', $slice);
+    }
 
-		// skip if key is undefined
-		if($keys === null || $keys === false)
-			return;
-		if(!is_array($keys))
-			$keys = array($keys);
+    /**
+     * Load items that match a key/callback
+     *
+     * @param $where
+     * @param bool $first
+     * @return array|mixed|null
+     */
+    public function load($where, $first = false)
+    {
+        $ids = $this->find($where, $first);
+        return $this->db->load($ids);
+    }
 
-		$store = false;
-		$oldKeys = @$this->inverse[$id];
+    /**
+     * Load first matching item
+     *
+     * @param $where
+     * @return array|mixed|null
+     */
+    public function loadFirst($where)
+    {
+        return $this->load($where, true);
+    }
 
-		// insert new keys
-		foreach($keys as $key) {
-			// skip if key is already in index
-			if(isset($oldKeys[$key])) {
-				unset($oldKeys[$key]); // don't remove that entry later
-				continue;
-			}
+    /**
+     * Load slice of mapping
+     *
+     * @param int $offset
+     * @param null $length
+     * @return array|mixed|null
+     */
+    public function loadSlice($offset = 0, $length = null)
+    {
+        $ids = $this->slice($offset, $length);
+        return $this->db->load($ids);
+    }
 
-			$this->map[$key][] = $id;
-			$this->inverse[$id][$key] = count($this->map[$key]) - 1;
-			$store = true;
-		}
+    /**
+     * Update item in index
+     * Synchronized
+     *
+     * @param $event
+     */
+    public function update($event)
+    {
+        $self = $this;
+        $id = $event->id;
+        $data = $event->data;
 
-		// remove remaining invalid entries
-		if(!empty($oldKeys)) {
-			foreach($oldKeys as $key => $offset) {
-				array_splice($this->map[$key], $offset, 1);
-				unset($this->inverse[$id][$key]);
-				$store = true;
-			}
-		}
+        $this->apply(function () use ($self, $id, $data) {
+            if ($self->updateTemp($id, $data)) {
+                $self->store();
+            }
+        });
+    }
 
-		return $store;
-	}
+    /** Update temporary data
+     *
+     * @param string $id
+     * @param array $data
+     * @return bool|void
+     */
+    protected function updateTemp($id, $data)
+    {
+        // compute new keys
+        $keys = $this->keys($data);
 
-	/**
-	 * Delete item from index
-	 * Synchronized
-	 */
-	function delete($event) {
-		$self = $this;
-		$id = $event->id;
+        // skip if key is undefined
+        if (empty($keys)) {
+            return;
+        }
 
-		$this->apply(function() use ($self, $id) {
-			$store = false;
-			$oldKeys = @$self->inverse[$id];
+        if (!is_array($keys)) {
+            $keys = array($keys);
+        }
 
-			// remove all old entries
-			if(!empty($oldKeys)) {
-				foreach($oldKeys as $key => $offset) {
-					array_splice($self->map[$key], $offset, 1);
-					unset($self->inverse[$id][$key]);
-					$store = true;
-				}
-			}
+        $store = false;
+        $oldKeys = @$this->inverse[$id];
 
-			if($store)
-				$self->store();
-		});
-	}
+        // insert new keys
+        foreach ($keys as $key) {
+            // skip if key is already in index
+            if (isset($oldKeys[$key])) {
+                unset($oldKeys[$key]); // don't remove that entry later
+                continue;
+            }
 
-	/**
-	 * Rebuild index completely
-	 */
-	function rebuild() {
-		$self = $this;
-		$this->db->synchronized('_repair', function() use ($self) {
-			$self->map = array();
-			$self->inverse = array();
+            $this->map[$key][] = $id;
+            $this->inverse[$id][$key] = count($this->map[$key]) - 1;
+            $store = true;
+        }
 
-			$self->db->eachId(function($id) use ($self) {
-				$self->updateTemp($id, $self->db->load($id));
-			});
+        // remove remaining invalid entries
+        if (!empty($oldKeys)) {
+            foreach ($oldKeys as $key => $offset) {
+                array_splice($this->map[$key], $offset, 1);
+                unset($this->inverse[$id][$key]);
+                $store = true;
+            }
+        }
 
-			$self->store();
-		});
-	}
+        return $store;
+    }
 
-	/**
-	 * Apply a synchronized operation on the index
-	 */
-	function apply($func) {
-		$self = $this;
-		$this->db->synchronized($this->name . '_index', function() use ($self, $func) {
-			$self->restore();
-			$func();
-		});
-	}
+    /**
+     * Delete item from index
+     * Synchronized
+     *
+     * @param mixed $event
+     */
+    public function delete($event)
+    {
+        $self = $this;
+        $id = $event->id;
 
-	/**
-	 * Load index
-	 */
-	function restore() {
-		$index = $this->db->load('_' . $this->name . '_index');
+        $this->apply(function () use ($self, $id) {
+            $store = false;
+            $oldKeys = @$self->inverse[$id];
 
-		$this->map = @$index['map'];
-		$this->inverse = @$index['inverse'];
+            // remove all old entries
+            if (!empty($oldKeys)) {
+                foreach ($oldKeys as $key => $offset) {
+                    array_splice($self->map[$key], $offset, 1);
+                    unset($self->inverse[$id][$key]);
+                    $store = true;
+                }
+            }
 
-		if(empty($this->map))
-			$this->map = array();
-		if(empty($this->inverse))
-			$this->inverse = array();
+            if ($store) {
+                $self->store();
+            }
+        });
+    }
 
-		$this->sort(); // json does not guarantee sorted storage
-	}
+    /**
+     * Rebuild index completely
+     */
+    public function rebuild()
+    {
+        $self = $this;
+        $this->db->synchronized('_repair', function () use ($self) {
+            $self->map = array();
+            $self->inverse = array();
 
-	/**
-	 * Save index
-	 */
-	function store() {
-		$this->sort(); // keep map sorted by key
+            $self->db->eachId(function ($id) use ($self) {
+                $self->updateTemp($id, $self->db->load($id));
+            });
 
-		$this->db->save('_' . $this->name . '_index', array(
-			'name' => $this->name,
-			'type' => 'index',
-			'map' => $this->map,
-			'inverse' => $this->inverse
-		));
-	}
+            $self->store();
+        });
+    }
 
-	/**
-	 * Compute index key(s) of data
-	 */
-	function keys($data) {
-		$keys = $this->keyFunc;
-		if(!is_string($keys) && is_callable($keys))
-			return $keys($data);
-		return @$data[$keys];
-	}
+    /**
+     * Apply a synchronized operation on the index
+     *
+     * @param callable $func
+     * @throws Exception
+     */
+    public function apply($func)
+    {
+        $self = $this;
+        $this->db->synchronized($this->name . '_index', function () use ($self, $func) {
+            $self->restore();
+            $func();
+        });
+    }
 
-	/**
-	 * Get name of index
-	 */
-	function getName() {
-		return $this->name;
-	}
+    /**
+     * Load index
+     */
+    public function restore()
+    {
+        $index = $this->db->load('_' . $this->name . '_index');
 
-	/**
-	 * Sort index by key
-	 */
-	protected function sort() {
-		if(is_callable($this->compare))
-			return uksort($this->map, $this->compare);
-		return ksort($this->map);
-	}
+        $this->map = @$index['map'];
+        $this->inverse = @$index['inverse'];
 
-	protected $db;
-	protected $name;
-	protected $keyFunc;
-	protected $compare;
-	protected $map;
-	protected $inverse;
+        if (empty($this->map)) {
+            $this->map = array();
+        }
+        if (empty($this->inverse)) {
+            $this->inverse = array();
+        }
+
+        $this->sort(); // json does not guarantee sorted storage
+    }
+
+    /**
+     * Save index
+     */
+    public function store()
+    {
+        $this->sort(); // keep map sorted by key
+
+        $this->db->save('_' . $this->name . '_index', array(
+            'name' => $this->name,
+            'type' => 'index',
+            'map' => $this->map,
+            'inverse' => $this->inverse
+        ));
+    }
+
+    /**
+     * Compute index key(s) of data
+     *
+     * @param $data
+     * @return mixed
+     */
+    public function keys($data)
+    {
+        $keys = $this->keyFunc;
+        if (!is_string($keys) && is_callable($keys)) {
+            return $keys($data);
+        }
+        return @$data[$keys];
+    }
+
+    /**
+     * Get name of index
+     *
+     * @return string
+     */
+    public function getName()
+    {
+        return $this->name;
+    }
+
+    /**
+     * Sort index by key
+     *
+     * @return array
+     */
+    protected function sort()
+    {
+        if (is_callable($this->compare)) {
+            return uksort($this->map, $this->compare);
+        }
+
+        return ksort($this->map);
+    }
 }
