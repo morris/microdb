@@ -2,33 +2,55 @@
 
 namespace MicroDB;
 
+use Exception;
+
 /**
  * A file-based JSON object database
  */
-class Database {
+class Database
+{
+	/**
+	 * @var string
+	 */
+	protected $path;
+
+	/**
+	 * @var int
+	 */
+	protected $mode;
+
+	/**
+	 * @var array
+	 */
+	private $handlers = array();
+
+	/**
+	 * @var array
+	 */
+	private $locks = array();
 
 	/**
 	 * Constructor
+	 * @param $path
+	 * @param int $mode
 	 */
-	function __construct( $path, $mode = 0644 ) {
+	public function __construct( $path, $mode = 0775 ) {
 
-		$path = (string) $path;
-
-		if ( substr($path, -1) != '/' ) {
-			$path .= '/';
-		}
+		$path = (string) rtrim($path, '/') . '/';
 
 		$this->path = $path;
 		$this->mode = $mode;
 
-		@mkdir( $this->path, $this->mode, true );
-
+		$this->makeDir( $this->path, $this->mode);
 	}
 
 	/**
 	 * Create an item with auto incrementing id
+	 * @param array $data
+	 * @return
+	 * @throws Exception
 	 */
-	function create($data = array()) {
+	public function create(array $data = array()) {
 
 		$self = $this;
 
@@ -53,8 +75,12 @@ class Database {
 
 	/**
 	 * Save data to database
+	 * @param $id
+	 * @param $data
+	 * @return
+	 * @throws Exception
 	 */
-	function save($id, $data) {
+	public function save($id, $data) {
 
 		$self = $this;
 		$event = new Event($this, $id, $data);
@@ -73,8 +99,11 @@ class Database {
 
 	/**
 	 * Load data from database
+	 * @param $id
+	 * @param null $key
+	 * @return array|mixed|null
 	 */
-	function load($id, $key = null) {
+	public function load($id, $key = null) {
 		if(is_array($id)) {
 			$results = array();
 			foreach($id as $i) {
@@ -101,8 +130,11 @@ class Database {
 
 	/**
 	 * Delete data from database
+	 * @param $id
+	 * @return array
+	 * @throws Exception
 	 */
-	function delete($id) {
+	public function delete($id) {
 		if(is_array($id)) {
 			$results = array();
 			foreach($id as $i) {
@@ -113,6 +145,7 @@ class Database {
 
 		$self = $this;
 		$event = new Event($this, $id);
+
 		return $this->synchronized($id, function() use ($self, $event) {
 			$self->triggerId('beforeDelete', $event);
 
@@ -124,8 +157,11 @@ class Database {
 
 	/**
 	 * Find data matching key-value map or callback
+	 * @param array $where
+	 * @param bool $first
+	 * @return array
 	 */
-	function find($where = array(), $first = false) {
+	public function find($where = array(), $first = false) {
 		$results = array();
 
 		if(!is_string($where) && is_callable($where)) {
@@ -164,15 +200,19 @@ class Database {
 
 	/**
 	 * Find first item key-value map or callback
+	 * @param null $where
+	 * @return array
 	 */
-	function first($where = null) {
+	public function first($where = null) {
 		return $this->find($where, true);
 	}
 
 	/**
-	 * Checks wether an id exists
+	 * Checks whether an id exists
+	 * @param $id
+	 * @return bool
 	 */
-	function exists($id) {
+	public function exists($id) {
 		return is_file($this->path.$id);
 	}
 
@@ -181,14 +221,15 @@ class Database {
 	 * On this event, applications should repair inconsistencies in the
 	 * database, e.g. rebuild indices.
 	 */
-	function repair() {
+	public function repair() {
 		$this->trigger('repair');
 	}
 
 	/**
 	 * Call a function for each id in the database
+	 * @param $func
 	 */
-	function eachId($func) {
+	public function eachId($func) {
 		$res = opendir($this->path);
 
 		while(($id = readdir($res)) !== false) {
@@ -202,6 +243,9 @@ class Database {
 
 	/**
 	 * Trigger an event only if id is not hidden
+	 * @param $type
+	 * @param $event
+	 * @return $this
 	 */
 	protected function triggerId($type, $event) {
 		if(is_object($event) && !$this->hidden($event->id))
@@ -212,15 +256,19 @@ class Database {
 	/**
 	 * Is this id hidden, i.e. no events should be triggered?
 	 * Hidden ids start with an underscore
+	 * @param $id
+	 * @return bool
 	 */
-	function hidden($id) {
+	public function hidden($id) {
 		return $id{0} == '_';
 	}
 
 	/**
 	 * Check if id is valid
+	 * @param $id
+	 * @return bool
 	 */
-	function validId($id) {
+	public function validId($id) {
 		$id = (string)$id;
 		return $id !== '.' && $id !== '..' && preg_match('#^[^/?*:;{}\\\\]+$#', $id);
 	}
@@ -231,8 +279,12 @@ class Database {
 	 * Call a function in a mutually exclusive way, locking on files
 	 * A process will only block other processes and never block itself,
 	 * so you can safely nest synchronized operations.
+	 * @param $locks
+	 * @param $func
+	 * @return
+	 * @throws Exception
 	 */
-	function synchronized( $locks, $func ) {
+	public function synchronized( $locks, $func ) {
 
 		if(!is_array( $locks )) {
 			$locks = array( $locks );
@@ -270,7 +322,7 @@ class Database {
 
 				} else {
 
-					throw new \Exception('Unable to synchronize over '.$lock);
+					throw new Exception('Unable to synchronize over '.$lock);
 
 				}
 
@@ -316,16 +368,13 @@ class Database {
 	}
 
 	/**
-	 * Set of acquired locks
-	 */
-	public $locks = array();
-
-	// IO
-
-	/**
 	 * Put file contents
+	 * @param $file
+	 * @param $data
+	 * @return bool|void
+	 * @internal param bool $mode
 	 */
-	protected function put($file, $data, $mode = false) {
+	protected function put($file, $data) {
 		// don't overwrite if unchanged, just touch
 		if(is_file($file) && file_get_contents($file) === $data) {
 			touch($file);
@@ -340,6 +389,8 @@ class Database {
 
 	/**
 	 * Get file contents
+	 * @param $file
+	 * @return null|string
 	 */
 	protected function get($file) {
 		if(!is_file($file))
@@ -349,6 +400,8 @@ class Database {
 
 	/**
 	 * Remove file from filesystem
+	 * @param $file
+	 * @return bool
 	 */
 	protected function erase($file) {
 		return unlink($file);
@@ -356,31 +409,24 @@ class Database {
 
 	/**
 	 * Get data path
+	 * @return string
 	 */
-	function getPath() {
+	public function getPath() {
 		return $this->path;
 	}
 
 	/**
-	 * Directory where data files are stored
-	 */
-	protected $path;
-
-	/**
-	 * Mode for created files
-	 */
-	protected $mode;
-
-	// EVENTS
-
-	/**
 	 * Bind a handler to an event, with given priority.
 	 * Higher priority handlers will be executed earlier.
-	 * @param string|array Event keys
-	 * @param callable Handler
-	 * @param number Priority of handler
+	 * @param $event
+	 * @param $handler
+	 * @param int $priority
+	 * @return $this
+	 * @internal param array|string $Event keys
+	 * @internal param Handler $callable
+	 * @internal param Priority $number of handler
 	 */
-	function on($event, $handler, $priority = 0) {
+	public function on($event, $handler, $priority = 0) {
 		$events = $this->splitEvents($event);
 
 		foreach ($events as $event) {
@@ -409,8 +455,9 @@ class Database {
 	 * Unbind a handler on one, multiple or all events
 	 * @param string|array Event keys, comma separated
 	 * @param callable Handler
+	 * @return $this
 	 */
-	function off($event, $handler = null) {
+	public function off($event, $handler = null) {
 		if(!is_string($event) && is_callable($event)) {
 			$handler = $event;
 			$event = array_keys($this->handlers);
@@ -434,9 +481,10 @@ class Database {
 	/**
 	 * Trigger one or more events with given arguments
 	 * @param string|array Event keys, whitespace/comma separated
-	 * @param mixed Optional arguments
+	 * @param mixed
+	 * @return $this
 	 */
-	function trigger($event, $args = null) {
+	public function trigger($event, $args = null) {
 		$args = func_get_args();
 		array_shift($args);
 		$args[] = $event;
@@ -454,16 +502,26 @@ class Database {
 
 	/**
 	 * Split event keys by whitespace and/or comma
+	 * @param $events
+	 * @return array
 	 */
-	protected function splitEvents($events) {
-		if(is_array($events))
+	private function splitEvents($events) {
+		if(is_array($events)) {
 			return $events;
+		}
 
 		return preg_split('([\s,]+)', $events);
 	}
 
 	/**
-	 * Map of event handlers
+	 * @param $path
+	 * @param $mode
 	 */
-	protected $handlers = array();
+	private function makeDir($path, $mode)
+	{
+		if ( ! is_dir($path) )
+		{
+			mkdir($path, $mode, true);
+		}
+	}
 }
