@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="MicroDB is a minimalistic file-based JSON object database written in PHP.">
+    <meta name="keywords" content="MicroDB, Database, PHP, File-based, JSON">
+    <meta name="author" content="Morris Brodersen Rick de Graaff">
+
+    <title>MicroDB &ndash; A minimalistic file-based JSON object database written in PHP</title>
+
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="http://yandex.st/highlightjs/8.0/styles/default.min.css">
+    <link href="css/main.css" rel="stylesheet">
+</head>
+
+<body>
+
+<div class="container">
+    <div class="row">
+        <div class="col-xs-12">
+            <header id="header" role="banner">
+                <h1>MicroDB</h1>
+
+                <p>A minimalistic file-based JSON object database written in PHP</p>
+
+                <nav id="nav" role="navigation">
+                    <ul>
+                        <li><b>Guide</b>
+                            <ul>
+                                <li><a href="#introduction">Introduction</a></li>
+                                <li><a href="#indices">Indices</a></li>
+                                <li><a href="#events">Events</a></li>
+                                <li><a href="#tests">Tests</a></li>
+                                <li><a href="#license">License</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                    <ul>
+                        <li><b>Classes</b>
+                            <ul>
+                                <li><a href="#Database">Database</a></li>
+                                <li><a href="#Index">Index</a></li>
+                                <li><a href="#Cache">Cache</a></li>
+                                <li><a href="#Event">Event</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                </nav>
+            </header>
+
+            <main id="main" role="main">
+                <section id="introduction" class="guide">
+                    <h2>Introduction</h2>
+
+                    <p>MicroDB is a minimalistic file-based JSON object database written in PHP.</p>
+
+                    <p>Find the full, open source code at <a href="https://github.com/morris/microdb">GitHub</a>.</p>
+
+                    <h3>Features</h3>
+
+                    <ul>
+                        <li>Stores JSON objects as plain files</li>
+                        <li>Concurrency safe</li>
+                        <li>Arbitrary indices using custom key functions</li>
+                        <li>Listen to database operations through events</li>
+                        <li>Synchronize arbitrary operations</li>
+                    </ul>
+
+                    <h3>Basics</h3>
+
+                    <p>The following code demonstrates all basic operations on a MicroDB database.</p>
+<pre><code>&lt?php
+
+    $db = new \MicroDB\Database('data/posts'); // data directory
+
+    // create an item
+    // id is an auto incrementing integer
+    $id = $db->create(array(
+    'title' => 'Lorem ipsum',
+    'body' => 'At vero eos et accusam et justo duo dolores et ea rebum.'
+    ));
+
+    // load an item
+    $post = $db->load($id);
+
+    // save an item
+    $post['tags'] = array('lorem', 'ipsum');
+    $db->save($id, $post);
+
+    // find items
+    $posts = $db->find(function($post) {
+    return is_array(@$post['tags']) &amp;&amp; in_array('ipsum', @$post['tags']);
+    });
+
+    foreach($posts as $id => $post) {
+    print_r($post);
+    }
+
+    // delete an item
+    $db->delete($id);</code></pre>
+
+                    <h3>Requirements</h3>
+
+                    <p>PHP 5.3+</p>
+
+
+                    <h3>Installation</h3>
+
+                    <p>The composer package name is <code>morris/microdb</code>. You can also download or
+                        fork the <a href="https://github.com/morris/microdb">GitHub repository</a>.</p>
+                </section>
+
+                <section id="indices" class="guide">
+                    <h2>Indices</h2>
+
+                    <p>An index maps some scalar value to one or more database IDs. This
+                        mapping can be used to find objects more quickly.</p>
+
+                    <p>Indices must be created before any database operation to work.
+                        Usually you just create them directly after creating the database.
+<pre><code>&lt;?php
+
+    // create database
+    $db = new \MicroDB\Database('data/users');
+
+    // create index
+    // maps the "email" attribute of any data object
+    // updates itself whenever an object is saved or deleted
+    $emailIndex = new \MicroDB\Index($db, 'email', 'email');
+
+    // using the index, you can quickly find items
+    // this is faster than using $db->find(array('email' => 'foo@bar.de'));
+    $foo = $emailIndex->first('foo@bar.de');
+
+    // let's create a more complex index
+    // this index keeps track of the number of items on users' todo lists
+    $todoIndex = new \MicroDB\Index($db, 'todo', function($user) {
+    return count($user['todo']);
+    });
+
+    // then we can find all users with at least 10 tasks
+    $users = $todoIndex->find(function($todo) { return $todo >= 10; });
+</code></pre>
+
+                    <p>Note that the <code>Database</code> class does not use <code>Index</code> directly. Indices
+                        work by listening to <a href="#events">database events</a> and are
+                        stored as database objects.</p>
+
+                </section>
+
+                <section id="events" class="guide">
+
+                    <h2>Events</h2>
+
+                    <p>The following events are triggered by MicroDB:</p>
+
+<pre>beforeSave
+saved
+beforeLoad
+loaded
+beforeDelete
+deleted</pre>
+
+                    <p>Handlers of these events receive an object of class <a href="#Event">MicroDB\Event</a>
+                        as argument with properties <code>id</code> and possibly <code>data</code>.</p>
+
+                    <div class="alert alert-info">Note that IDs starting with an underscore
+                        are not getting any of these events because they are considered
+                        hidden, e.g. index data files.
+                    </div>
+
+                    <p>For example, the following code prevents modifications on user
+                        objects unless you are an admin:</p>
+
+<pre><code>&lt;?php
+
+    $db->on('beforeSave, beforeDelete', function($event) use ($app) {
+    if($data['type'] === 'user' && !$app->isAdmin())
+    throw new \Exception(
+    'Sorry, only admins are allowed to modify user data.'
+    );
+    });</code></pre>
+
+                    <p>In the next example, the IDs of items are automatically injected after loading:</p>
+
+<pre><code>&lt;?php
+
+    $db->on('loaded', function($event) use ($app) {
+    $event->data['id'] = $event->id;
+    });</code></pre>
+
+                    <p>You can also trigger events manually and unbind handlers:</p>
+
+<pre><code>&lt;?php
+
+    $handler = function($arg) {
+    echo $arg;
+    };
+
+    // bind to custom event
+    $db->on('hello', $handler);
+
+    // trigger an event with arguments
+    $db->trigger('hello', 'Hello World');
+
+    // unbind a specific handler
+    $db->off($handler);
+
+    // unbind all handlers of an event
+    $db->off('hello');</code></pre>
+
+                </section>
+
+                <section id="tests" class="guide">
+                    <h2>Tests</h2>
+
+                    <p>Before running the tests you must run <code>composer update</code> in the microdb
+                        directory. This will install development dependencies like PHPUnit. Then, you can run
+                        the tests with <code>vendor/bin/phpunit tests</code>.</p>
+
+                    <p>To test the concurrent behavior you can run the tests twice in parallel:
+                        <code>vendor/bin/phpunit tests &amp; vendor/bin/phpunit tests</code></p>
+
+                </section>
+
+                <section id="license" class="guide">
+                    <h2>License</h2>
+
+                    <p>MicroDB is licensed under the MIT License. Attribution is not required
+                        but very welcome!</p>
+
+<pre>
+The MIT License (MIT)
+
+Copyright (c) 2014 Morris Brodersen &lt;mb@morrisbrodersen.de&gt;
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+</pre>
+                </section>
+
+                <section id="Database" class="class">
+                    <h2>MicroDB\Database</h2>
+<pre><code>&lt;?php
+
+    namespace MicroDB;
+
+    /**
+    * A file-based JSON object database
+    */
+    class Database {
+
+    /**
+    * Constructor
+    */
+    function __construct($path, $mode = 0644);
+
+    /**
+    * Create an item with auto incrementing id
+    */
+    function create($data = array());
+
+    /**
+    * Save data to database
+    */
+    function save($id, $data) ;
+
+    /**
+    * Load data from database
+    */
+    function load($id, $key = null) ;
+
+    /**
+    * Delete data from database
+    */
+    function delete($id);
+
+    /**
+    * Find data matching key-value map or callback
+    */
+    function find($where = array(), $first = false);
+
+    /**
+    * Find first item key-value map or callback
+    */
+    function first($where = null);
+
+    /**
+    * Checks wether an id exists
+    */
+    function exists($id);
+
+    /**
+    * Triggers "repair" event.
+    * On this event, applications should repair inconsistencies in the
+    * database, e.g. rebuild indices.
+    */
+    function repair();
+
+    /**
+    * Call a function for each id in the database
+    */
+    function eachId($func);
+
+    /**
+    * Is this id hidden, i.e. no events should be triggered?
+    * Hidden ids start with an underscore
+    */
+    function hidden($id);
+
+    // SYNCHRONIZATION
+
+    /**
+    * Call a function in a mutually exclusive way, locking on files
+    * A process will only block other processes and never block itself,
+    * so you can safely nest synchronized operations.
+    */
+    function synchronized($locks, $func);
+
+    /**
+    * Get data path
+    */
+    function getPath();
+
+    // EVENTS
+
+    /**
+    * Bind a handler to an event, with given priority.
+    * Higher priority handlers will be executed earlier.
+    * @param string|array Event keys
+    * @param callable Handler
+    * @param number Priority of handler
+    */
+    function on($event, $handler, $priority = 0);
+
+    /**
+    * Unbind a handler on one, multiple or all events
+    * @param string|array Event keys, comma separated
+    * @param callable Handler
+    */
+    function off($event, $handler = null);
+
+    /**
+    * Trigger one or more events with given arguments
+    * @param string|array Event keys, whitespace/comma separated
+    * @param mixed Optional arguments
+    */
+    function trigger($event, $args = null);
+    }
+</code></pre>
+                </section>
+
+                <section id="Index" class="class">
+                    <h2>MicroDB\Index</h2>
+<pre><code>&lt;?php
+
+    namespace MicroDB;
+
+    /**
+    * Represents and manages an index on a database.
+    * An index maps keys to ids where keys are computed from items.
+    */
+    class Index {
+
+    /**
+    * Creates an index on a database with a name and an index key
+    * function. The index listens to database events to update itself.
+    */
+    function __construct($db, $name, $keyFunc, $compare = null);
+
+    /**
+    * Find ids that match a key/callback
+    */
+    function find($where, $first = false);
+
+    /**
+    * Get first matching id
+    */
+    function first($where);
+
+    /**
+    * Get slice of mapping, useful for paging
+    */
+    function slice($offset = 0, $length = null);
+
+    /**
+    * Load items that match a key/callback
+    */
+    function load($where, $first = false);
+
+    /**
+    * Load first matching item
+    */
+    function loadFirst($where);
+
+    /**
+    * Load slice of mapping
+    */
+    function loadSlice($offset = 0, $length = null);
+
+    /**
+    * Update item in index
+    * Synchronized
+    */
+    function update($id, $data);
+
+    /**
+    * Delete item from index
+    * Synchronized
+    */
+    function delete($id);
+
+    /**
+    * Rebuild index completely
+    */
+    function rebuild();
+
+    /**
+    * Apply a synchronized operation on the index
+    */
+    function apply($func);
+
+    /**
+    * Load index
+    */
+    function restore();
+
+    /**
+    * Save index
+    */
+    function store();
+
+    /**
+    * Compute index key(s) of data
+    */
+    function keys($data);
+
+    /**
+    * Get name of index
+    */
+    function getName();
+    }
+
+</code></pre>
+                </section>
+
+                <section id="Cache" class="class">
+                    <h2>MicroDB\Cache</h2>
+<pre><code>&lt;?php
+
+    namespace MicroDB;
+
+    /**
+    * A cache for data loading
+    */
+    class Cache {
+
+    /**
+    * Constructor
+    */
+    function __construct($db);
+
+    /**
+    * Load a possibly cached item
+    */
+    function load($id);
+
+    /**
+    * Execute a function on each item (id, data)
+    */
+    function each($func);
+    }
+
+</code></pre>
+                </section>
+
+                <section id="Event" class="class">
+                    <h2>MicroDB\Event</h2>
+<pre><code>&lt;?php
+
+    namespace MicroDB;
+
+    /**
+    * A container for database events
+    */
+    class Event {
+
+    /**
+    * Constructor
+    */
+    function __construct($db, $id, $data = null);
+
+    var $db;
+    var $id;
+    var $data;
+    }
+
+</code></pre>
+                </section>
+            </main>
+
+            <footer id="footer" role="contentinfo">
+                MicroDB is &copy; since 2014 Morris Brodersen &middot; <a href="http://morrisbrodersen.de"
+                                                                          target="_blank">morrisbrodersen.de</a>
+            </footer>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+<script src="js/main.js"></script>
+
+<script src="http://yandex.st/highlightjs/8.0/highlight.min.js"></script>
+<script>hljs.initHighlightingOnLoad();</script>
+</body>
+</html>

@@ -1,0 +1,87 @@
+/**
+ * Copyright (c) 2014 Morris Brodersen <mb@morrisbrodersen.de>
+ */
+
+html, body {
+	background: #ddd;
+}
+
+a,
+a:visited {
+	color: #294;
+}
+
+a:hover,
+a:focus {
+	color: #072;
+	text-decoration: underline;
+}
+
+.container {
+  padding-top: 20px;
+  padding-bottom: 10px;
+  margin-top: 40px;
+  margin-bottom: 40px;
+	background: #fff;
+}
+
+#header h1 {
+	margin-top: 0;
+	color: #4B6;
+}
+
+#nav {
+	overflow: hidden;
+	border-top: 1px dotted #ccc;
+	border-bottom: 1px dotted #ccc;
+	margin: 1em 0;
+	padding: 0.5em 0 0.5em 0;
+}
+
+#nav ul {
+	list-style-type: none;
+	margin: 0;
+	padding: 0;
+}
+
+#nav > ul > li {
+	overflow: hidden;
+}
+
+#nav > ul > li > b {
+	display: inline-block;
+	padding: 0.5em 0;
+}
+
+#nav ul ul li {
+	float: left;
+}
+
+#nav a {
+	display: inline-block;
+	padding: 0.5em 0.6em;
+}
+
+#nav a.active {
+	background: #4B6;
+	color: #fff;
+}
+
+#main section {
+	border-bottom: 1px dotted #ccc;
+	padding-bottom: 0.5em;
+	margin-bottom: 1em;
+}
+
+#main pre code {
+	white-space: pre;
+}
+
+#main .hljs {
+	background: transparent;
+	padding: 0;
+}
+
+#footer {
+	text-align: right;
+}
