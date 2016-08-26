@@ -19,16 +19,21 @@ class Database
      * @var int
      */
     protected $mode;
+    
+    /**
+     * @var array
+     */
+    protected $options = [];
 
     /**
      * @var array
      */
-    private $handlers = array();
+    private $handlers = [];
 
     /**
      * @var array
      */
-    private $locks = array();
+    private $locks = [];
 
     /**
      * Constructor
@@ -36,12 +41,13 @@ class Database
      * @param string $path
      * @param int $mode
      */
-    public function __construct($path, $mode = 0775)
+    public function __construct($path, $mode = 0775, $options = [])
     {
         $path = (string)rtrim($path, '/') . '/';
 
         $this->path = $path;
         $this->mode = $mode;
+        $this->options = $options;
 
         $this->makeDir($this->path, $this->mode);
     }
@@ -53,7 +59,7 @@ class Database
      * @return array
      * @throws Exception if synchronization failed
      */
-    public function create(array $data = array())
+    public function create(array $data = [])
     {
 
         $self = $this;
@@ -94,7 +100,7 @@ class Database
 
             $self->triggerId('beforeSave', $event);
 
-            $self->put($this->path . $event->id, json_encode($event->data));
+            $self->put($this->path . $this->generateSubTree($event->id), json_encode($event->data));
 
             $self->triggerId('saved', $event);
 
@@ -112,7 +118,7 @@ class Database
     public function load($id, $key = null)
     {
         if (is_array($id)) {
-            $results = array();
+            $results = [];
             foreach ($id as $i) {
                 $results[$i] = $this->load($i);
             }
@@ -127,7 +133,7 @@ class Database
 
         $this->triggerId('beforeLoad', $event);
 
-        $event->data = json_decode($this->get($this->path . $event->id), true);
+        $event->data = json_decode($this->get($this->path . $this->generateSubTree($event->id)), true);
 
         $this->triggerId('loaded', $event);
 
@@ -146,7 +152,7 @@ class Database
     public function delete($id)
     {
         if (is_array($id)) {
-            $results = array();
+            $results = [];
             foreach ($id as $i) {
                 $results[$i] = $this->delete($i);
             }
@@ -159,7 +165,7 @@ class Database
         return $this->synchronized($id, function () use ($self, $event) {
             $self->triggerId('beforeDelete', $event);
 
-            $self->erase($this->path . $event->id);
+            $self->erase($this->path . $this->generateSubTree($event->id));
 
             $self->triggerId('deleted', $event);
         });
@@ -172,9 +178,9 @@ class Database
      * @param bool $first
      * @return array
      */
-    public function find($where = array(), $first = false)
+    public function find($where = [], $first = false)
     {
-        $results = array();
+        $results = [];
 
         if (!is_string($where) && is_callable($where)) {
             $this->eachId(function ($id) use (&$results, $where, $first) {
@@ -322,7 +328,7 @@ class Database
         }
 
         // remove already acquired locks
-        $acquire = array();
+        $acquire = [];
         foreach ($locks as $lock) {
 
             if (!isset($this->locks[$lock])) {
@@ -336,7 +342,7 @@ class Database
 
         array_unique($locks);
 
-        $handles = array();
+        $handles = [];
 
         try {
 
@@ -476,11 +482,11 @@ class Database
             }
 
             if (!isset($this->handlers[$event])) {
-                $this->handlers[$event] = array();
+                $this->handlers[$event] = [];
             }
 
             if (!isset($this->handlers[$event][$priority])) {
-                $this->handlers[$event][$priority] = array();
+                $this->handlers[$event][$priority] = [];
 
                 // keep handlers sorted by priority
                 krsort($this->handlers[$event]);
@@ -572,5 +578,35 @@ class Database
         if (!is_dir($path)) {
             mkdir($path, $mode, true);
         }
+    }
+    
+    /**
+    * Generates the file subtree if required
+    * @param integer $id
+    * 
+    * @return string
+    */
+    function generateSubTree ($id)
+    {
+    	if (!isset($this->options["subtree"])) {
+            return $id;
+    	}
+    	
+    	$i = 0;
+    	$idLength = strlen($id);
+    	$path = "";
+    	
+    	while ($i < $this->options["subtree"] && $i < $idLength)
+    	{
+            $path .= substr($id, $i, 1) . "/";
+            $i++;
+    	}
+    	
+    	// ensure that this path exists
+    	$this->makeDir($path, $this->mode);
+    	
+    	$path .= $id;
+    	
+    	return $path;
     }
 }
