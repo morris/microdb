@@ -23,17 +23,17 @@ class Database
     /**
      * @var array
      */
-    protected $options = array();
+    protected $options = [];
 
     /**
      * @var array
      */
-    private $handlers = array();
+    private $handlers = [];
 
     /**
      * @var array
      */
-    private $locks = array();
+    private $locks = [];
 
     /**
      * Constructor
@@ -41,7 +41,7 @@ class Database
      * @param string $path
      * @param int $mode
      */
-    public function __construct($path, $mode = 0775, $options = array())
+    public function __construct($path, $mode = 0775, $options = [])
     {
         $path = (string)rtrim($path, '/') . '/';
 
@@ -59,7 +59,7 @@ class Database
      * @return array
      * @throws Exception if synchronization failed
      */
-    public function create(array $data = array())
+    public function create(array $data = [])
     {
 
         $self = $this;
@@ -118,7 +118,7 @@ class Database
     public function load($id, $key = null)
     {
         if (is_array($id)) {
-            $results = array();
+            $results = [];
             foreach ($id as $i) {
                 $results[$i] = $this->load($i);
             }
@@ -152,7 +152,7 @@ class Database
     public function delete($id)
     {
         if (is_array($id)) {
-            $results = array();
+            $results = [];
             foreach ($id as $i) {
                 $results[$i] = $this->delete($i);
             }
@@ -178,9 +178,9 @@ class Database
      * @param bool $first
      * @return array
      */
-    public function find($where = array(), $first = false)
+    public function find($where = [], $first = false)
     {
-        $results = array();
+        $results = [];
 
         if (!is_string($where) && is_callable($where)) {
             $this->eachId(function ($id) use (&$results, $where, $first) {
@@ -328,7 +328,7 @@ class Database
         }
 
         // remove already acquired locks
-        $acquire = array();
+        $acquire = [];
         foreach ($locks as $lock) {
 
             if (!isset($this->locks[$lock])) {
@@ -342,7 +342,7 @@ class Database
 
         array_unique($locks);
 
-        $handles = array();
+        $handles = [];
 
         try {
 
@@ -482,11 +482,11 @@ class Database
             }
 
             if (!isset($this->handlers[$event])) {
-                $this->handlers[$event] = array();
+                $this->handlers[$event] = [];
             }
 
             if (!isset($this->handlers[$event][$priority])) {
-                $this->handlers[$event][$priority] = array();
+                $this->handlers[$event][$priority] = [];
 
                 // keep handlers sorted by priority
                 krsort($this->handlers[$event]);
