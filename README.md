@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/morris/microdb.svg?branch=master)](https://travis-ci.org/morris/microdb) [![GitHub version](https://badge.fury.io/gh/morris%2Fmicrodb.svg)](https://badge.fury.io/gh/morris%2Fmicrodb) ![](https://reposs.herokuapp.com/?path=morris/Microdb)
+[![Build Status](https://travis-ci.org/morris/microdb.svg?branch=master)](https://travis-ci.org/morris/microdb) [![Coverage Status](https://coveralls.io/repos/github/morris/microdb/badge.svg?branch=master)](https://coveralls.io/github/morris/microdb?branch=master) [![GitHub version](https://badge.fury.io/gh/morris%2Fmicrodb.svg)](https://badge.fury.io/gh/morris%2Fmicrodb) ![](https://reposs.herokuapp.com/?path=morris/Microdb)
 
 # MicroDB
 
