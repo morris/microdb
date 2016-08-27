@@ -1,7 +1,7 @@
 {
   "name": "morris/microdb",
   "description": "MicroDB is a minimalistic file-based JSON object database written in PHP.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "keywords": [
     "database",
     "file",
@@ -21,6 +21,7 @@
     },
     {
       "name": "Rick de Graaff",
+      "homepage": "http://rickdegraaff.nl",
       "role": "Developer"
     }
   ],

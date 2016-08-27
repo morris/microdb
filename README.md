@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/morris/microdb.svg?branch=master)](https://travis-ci.org/morris/microdb) [![GitHub version](https://badge.fury.io/gh/morris%2Fmicrodb.svg)](https://badge.fury.io/gh/morris%2Fmicrodb) ![](https://reposs.herokuapp.com/?path=morris/Microdb)
+
 # MicroDB
 
 MicroDB is a minimalistic file-based JSON object database written in
@@ -12,12 +14,13 @@ http://morris.github.io/microdb
 - Arbitrary indices using custom key functions
 - Listen to database operations through events
 - Synchronize arbitrary operations
+- Make use of a subtree
 
 
 ## Documentation
 
 For documentation, examples and API, see the [online documentation](http://morris.github.io/microdb).
-
+****
 
 ## Requirements
 
