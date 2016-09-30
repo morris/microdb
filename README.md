@@ -2,6 +2,8 @@
 
 # MicroDB
 
+**MicroDB is currently not maintained and highly experimental. See https://github.com/morris/microdb/issues/15 for details.**
+
 MicroDB is a minimalistic file-based JSON object database written in
 PHP.
 
